@@ -1,0 +1,7 @@
+[package]
+name = "ai-listen-rs"
+version = "0.1.0"
+edition = "2024"
+description = "Cross-platform AI meeting note prototype with notes, screenshots, and screen recording hooks."
+
+[dependencies]

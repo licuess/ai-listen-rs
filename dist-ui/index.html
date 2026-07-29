@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Listen RS</title>
+    <script type="module" crossorigin src="/assets/index-BFlCbve5.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DoA4cQzF.css">
+  </head>
+  <body>
+    <main class="shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div>
+            <span class="label">AI Listen RS</span>
+            <h1>听记工作台</h1>
+          </div>
+          <button id="newSession" class="icon-button" title="新建会议">+</button>
+        </div>
+
+        <label class="search">
+          <span>搜索</span>
+          <input id="searchInput" type="search" placeholder="会议、笔记关键词" />
+        </label>
+
+        <label class="search">
+          <span>音频输入</span>
+          <select id="audioDevice"></select>
+        </label>
+        <button id="audioTestButton" class="sidebar-button">测试麦克风</button>
+
+        <nav id="sessionList" class="session-list"></nav>
+      </aside>
+
+      <section class="workspace">
+        <header class="toolbar">
+          <div>
+            <p id="sessionPath" class="path">未选择会议</p>
+            <h2 id="sessionTitle">选择或新建一个会议</h2>
+          </div>
+          <div class="actions">
+            <button id="screenshotButton" title="截图">📷 截图</button>
+            <button id="analyzeButton" title="识别截图内容">🔍 识别</button>
+            <button id="recordButton" title="开始录屏">🎬 录屏</button>
+            <button id="audioButton" title="开始录音">🎙 录音</button>
+            <button id="transcribeButton" title="转写最新录音">📝 转写</button>
+            <button id="summaryButton" title="生成摘要">📊 摘要</button>
+            <button id="indexButton" title="刷新索引">🔎 索引</button>
+            <div class="export-group">
+              <button id="exportButton" title="导出笔记">📤 导出</button>
+              <div class="export-menu" hidden>
+                <button data-format="markdown">Markdown</button>
+                <button data-format="pdf">PDF</button>
+                <button data-format="xmind">XMind</button>
+              </div>
+            </div>
+            <button id="saveButton" class="primary">💾 保存</button>
+          </div>
+        </header>
+
+        <div class="editor-grid">
+          <section class="editor-panel">
+            <textarea id="noteEditor" spellcheck="false" placeholder="# 会议标题&#10;&#10;- 输入会议笔记"></textarea>
+          </section>
+
+          <aside class="inspector">
+            <section>
+              <h3>素材</h3>
+              <div class="metric-row">
+                <span>截图</span>
+                <strong id="screenshotCount">0</strong>
+              </div>
+              <div class="metric-row">
+                <span>录屏</span>
+                <strong id="recordingCount">0</strong>
+              </div>
+              <div class="metric-row">
+                <span>音频</span>
+                <strong id="audioCount">0</strong>
+              </div>
+              <div class="metric-row">
+                <span>转写</span>
+                <strong id="transcriptCount">0</strong>
+              </div>
+            </section>
+
+            <section id="screenshotPreviewSection" hidden>
+              <h3>全部截图 <span id="screenshotPreviewCount" class="count-badge">0</span></h3>
+              <div id="screenshotGrid" class="screenshot-grid"></div>
+            </section>
+
+            <!-- 截图大图查看器 -->
+            <div id="screenshotViewer" class="screenshot-viewer" hidden>
+              <div class="viewer-overlay" id="viewerOverlay"></div>
+              <div class="viewer-content">
+                <button class="viewer-close" id="viewerClose">&times;</button>
+                <button class="viewer-nav viewer-prev" id="viewerPrev">&#8249;</button>
+                <img id="viewerImg" class="viewer-img" alt="截图" />
+                <button class="viewer-nav viewer-next" id="viewerNext">&#8250;</button>
+                <div class="viewer-info" id="viewerInfo"></div>
+              </div>
+            </div>
+
+            <section>
+              <h3>本地摘要</h3>
+              <pre id="summaryBox">选择会议后可生成摘要预览。</pre>
+            </section>
+
+            <section>
+              <h3>状态</h3>
+              <p id="statusText">就绪</p>
+            </section>
+
+            <section>
+              <h3>后台任务</h3>
+              <div id="taskList" class="task-list"></div>
+            </section>
+
+            <section id="transcriptPanel" class="transcript-panel" hidden>
+              <h3>实时转写</h3>
+              <pre id="transcriptLive" class="transcript-live"></pre>
+            </section>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+  </body>
+</html>

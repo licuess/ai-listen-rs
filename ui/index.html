@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Listen RS</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell" id="mainShell" hidden>
+      <aside class="sidebar">
+        <div class="brand">
+          <div>
+            <span class="label">AI Listen RS</span>
+            <h1>听记工作台</h1>
+          </div>
+          <button id="newSession" class="icon-button" title="新建会议">+</button>
+        </div>
+
+        <label class="search">
+          <span>搜索</span>
+          <input id="searchInput" type="search" placeholder="会议、笔记关键词" />
+        </label>
+
+        <label class="search">
+          <span>音频输入</span>
+          <select id="audioDevice"></select>
+        </label>
+        <button id="audioTestButton" class="sidebar-button">测试麦克风</button>
+
+        <nav id="sessionList" class="session-list"></nav>
+      </aside>
+
+      <section class="workspace">
+        <header class="toolbar">
+          <div>
+            <p id="sessionPath" class="path">未选择会议</p>
+            <h2 id="sessionTitle">选择或新建一个会议</h2>
+          </div>
+          <div class="actions">
+            <button id="screenshotButton" title="截图">📷 截图</button>
+            <button id="analyzeButton" title="识别截图内容">🔍 识别</button>
+            <button id="recordButton" title="开始录屏">🎬 录屏</button>
+            <button id="audioButton" title="开始录音">🎙 录音</button>
+            <button id="transcribeButton" title="转写最新录音">📝 转写</button>
+            <button id="summaryButton" title="生成摘要">📊 摘要</button>
+            <button id="indexButton" title="刷新索引">🔎 索引</button>
+            <div class="export-group">
+              <button id="exportButton" title="导出笔记">📤 导出</button>
+              <div class="export-menu" hidden>
+                <button data-format="markdown">Markdown</button>
+                <button data-format="pdf">PDF</button>
+                <button data-format="xmind">XMind</button>
+              </div>
+            </div>
+            <button id="saveButton" class="primary">💾 保存</button>
+            <button id="settingsBtn" title="设置">⚙️</button>
+            <button id="tokenReportBtn" title="Token 报表">📈</button>
+          </div>
+        </header>
+
+        <div class="editor-grid">
+          <section class="editor-panel">
+            <textarea id="noteEditor" spellcheck="false" placeholder="# 会议标题&#10;&#10;- 输入会议笔记"></textarea>
+          </section>
+
+          <aside class="inspector">
+            <section>
+              <h3>素材</h3>
+              <div class="metric-row">
+                <span>截图</span>
+                <strong id="screenshotCount">0</strong>
+              </div>
+              <div class="metric-row">
+                <span>录屏</span>
+                <strong id="recordingCount">0</strong>
+              </div>
+              <div class="metric-row">
+                <span>音频</span>
+                <strong id="audioCount">0</strong>
+              </div>
+              <div class="metric-row">
+                <span>转写</span>
+                <strong id="transcriptCount">0</strong>
+              </div>
+            </section>
+
+            <section id="screenshotPreviewSection" hidden>
+              <h3>全部截图 <span id="screenshotPreviewCount" class="count-badge">0</span></h3>
+              <div id="screenshotGrid" class="screenshot-grid"></div>
+            </section>
+
+            <!-- 截图大图查看器 -->
+            <div id="screenshotViewer" class="screenshot-viewer" hidden>
+              <div class="viewer-overlay" id="viewerOverlay"></div>
+              <div class="viewer-content">
+                <button class="viewer-close" id="viewerClose">&times;</button>
+                <button class="viewer-nav viewer-prev" id="viewerPrev">&#8249;</button>
+                <img id="viewerImg" class="viewer-img" alt="截图" />
+                <button class="viewer-nav viewer-next" id="viewerNext">&#8250;</button>
+                <div class="viewer-info" id="viewerInfo"></div>
+              </div>
+            </div>
+
+            <section>
+              <h3>本地摘要</h3>
+              <pre id="summaryBox">选择会议后可生成摘要预览。</pre>
+            </section>
+
+            <section>
+              <h3>状态</h3>
+              <p id="statusText">就绪</p>
+            </section>
+
+            <section>
+              <h3>后台任务</h3>
+              <div id="taskList" class="task-list"></div>
+            </section>
+
+            <section id="transcriptPanel" class="transcript-panel" hidden>
+              <h3>实时转写</h3>
+              <pre id="transcriptLive" class="transcript-live"></pre>
+            </section>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <!-- 登录界面 -->
+    <div id="loginOverlay" class="login-overlay">
+      <div class="login-card">
+        <!-- 登录模式 -->
+        <div id="loginMode">
+          <div class="login-header">
+            <h1>账号登录</h1>
+          </div>
+
+          <div class="login-tabs">
+            <button class="login-tab active" data-tab="email">邮箱</button>
+            <button class="login-tab" data-tab="username">用户名</button>
+          </div>
+
+          <!-- 邮箱登录 -->
+          <div id="loginFormEmail" class="login-form-panel">
+            <div class="login-input-group">
+              <input id="loginEmail" type="text" placeholder="邮箱账号" />
+              <select id="loginEmailProvider" class="login-domain-select">
+                <option value="@126.com">@126.com</option>
+                <option value="@163.com">@163.com</option>
+                <option value="@qq.com">@qq.com</option>
+                <option value="@gmail.com">@gmail.com</option>
+                <option value="@outlook.com">@outlook.com</option>
+                <option value="@yahoo.com">@yahoo.com</option>
+                <option value="@sina.com">@sina.com</option>
+                <option value="@foxmail.com">@foxmail.com</option>
+                <option value="@hotmail.com">@hotmail.com</option>
+                <option value="@icloud.com">@icloud.com</option>
+              </select>
+            </div>
+            <div class="login-input-group password-group">
+              <input id="loginEmailPassword" type="password" placeholder="输入密码" />
+              <button class="password-toggle" type="button" title="显示/隐藏密码">&#128065;</button>
+            </div>
+            <div class="login-options">
+              <label class="login-remember"><input type="checkbox" id="loginRemember" /> 30天内免登录</label>
+              <a class="login-forgot" href="#">忘记密码</a>
+            </div>
+            <button id="loginEmailBtn" class="login-submit">登 录</button>
+          </div>
+
+          <!-- 手机号登录 -->
+          <div id="loginFormPhone" class="login-form-panel" hidden>
+            <div class="login-input-group">
+              <input id="loginPhone" type="tel" placeholder="手机号" />
+            </div>
+            <div class="login-phone-row">
+              <input id="loginPhoneCode" type="text" placeholder="验证码" maxlength="6" />
+              <button id="loginPhoneSendCode" class="login-code-btn">发送验证码</button>
+            </div>
+            <button id="loginPhoneBtn" class="login-submit">登 录</button>
+          </div>
+
+          <!-- 用户名登录 -->
+          <div id="loginFormUsername" class="login-form-panel" hidden>
+            <div class="login-input-group">
+              <input id="loginUsername" type="text" placeholder="用户名或手机号" />
+            </div>
+            <div class="login-input-group password-group">
+              <input id="loginUsernamePassword" type="password" placeholder="输入密码" />
+              <button class="password-toggle" type="button" title="显示/隐藏密码">&#128065;</button>
+            </div>
+            <button id="loginUsernameBtn" class="login-submit">登 录</button>
+          </div>
+
+          <div class="login-footer">
+            <a class="login-register-link" id="goRegister">注册新账号</a>
+            <span class="login-footer-sep">|</span>
+            <a class="login-register-link" id="goRegisterVip">注册VIP</a>
+          </div>
+
+          <div class="login-divider"><span>其他登录方式</span></div>
+
+          <div class="login-social">
+            <button class="social-btn wechat" data-method="wechat" title="微信登录">微信</button>
+            <button class="social-btn qq" data-method="qq" title="QQ登录">QQ</button>
+            <button class="social-btn alipay" data-method="alipay" title="支付宝登录">支付宝</button>
+            <button class="social-btn github" data-method="github" title="GitHub登录">GitHub</button>
+          </div>
+        </div>
+
+        <!-- 注册模式 -->
+        <div id="registerMode" hidden>
+          <div class="login-header">
+            <h1>注册账号</h1>
+          </div>
+
+          <div class="login-tabs">
+            <button class="login-tab active" data-rtab="email">邮箱注册</button>
+            <button class="login-tab" data-rtab="phone">手机注册</button>
+          </div>
+
+          <!-- 邮箱注册 -->
+          <div id="registerFormEmail" class="login-form-panel">
+            <div class="login-input-group">
+              <input id="regEmail" type="text" placeholder="邮箱账号" />
+              <select id="regEmailProvider" class="login-domain-select">
+                <option value="@126.com">@126.com</option>
+                <option value="@163.com">@163.com</option>
+                <option value="@qq.com">@qq.com</option>
+                <option value="@gmail.com">@gmail.com</option>
+                <option value="@outlook.com">@outlook.com</option>
+                <option value="@yahoo.com">@yahoo.com</option>
+                <option value="@sina.com">@sina.com</option>
+                <option value="@foxmail.com">@foxmail.com</option>
+              </select>
+            </div>
+            <div class="login-input-group">
+              <input id="regEmailCode" type="text" placeholder="邮箱验证码" maxlength="6" />
+              <button id="regEmailSendCode" class="login-code-btn">发送验证码</button>
+            </div>
+            <div class="login-input-group password-group">
+              <input id="regPassword" type="password" placeholder="设置密码（6-20位）" />
+              <button class="password-toggle" type="button" title="显示/隐藏密码">&#128065;</button>
+            </div>
+            <div class="login-input-group password-group">
+              <input id="regPasswordConfirm" type="password" placeholder="确认密码" />
+              <button class="password-toggle" type="button" title="显示/隐藏密码">&#128065;</button>
+            </div>
+            <button id="registerEmailBtn" class="login-submit">注 册</button>
+          </div>
+
+          <!-- 手机注册 -->
+          <div id="registerFormPhone" class="login-form-panel" hidden>
+            <div class="login-input-group">
+              <input id="regPhone" type="tel" placeholder="手机号" />
+            </div>
+            <div class="login-phone-row">
+              <input id="regPhoneCode" type="text" placeholder="短信验证码" maxlength="6" />
+              <button id="regPhoneSendCode" class="login-code-btn">发送验证码</button>
+            </div>
+            <div class="login-input-group password-group">
+              <input id="regPhonePassword" type="password" placeholder="设置密码（6-20位）" />
+              <button class="password-toggle" type="button" title="显示/隐藏密码">&#128065;</button>
+            </div>
+            <button id="registerPhoneBtn" class="login-submit">注 册</button>
+          </div>
+
+          <div class="login-footer">
+            <a class="login-register-link" id="goLogin">已有账号？去登录</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 设置面板 -->
+    <div id="settingsOverlay" class="settings-overlay" hidden>
+      <div class="settings-card">
+        <div class="settings-header">
+          <h2>⚙️ 设置</h2>
+          <button id="settingsClose" class="settings-close-btn">&times;</button>
+        </div>
+        <div class="settings-body">
+          <div class="settings-group">
+            <label class="settings-label">OpenAI API Key</label>
+            <input id="settingsApiKey" type="password" placeholder="sk-..." class="settings-input" />
+          </div>
+          <div class="settings-group">
+            <label class="settings-label">上下文窗口大小 (tokens)</label>
+            <input id="settingsContextWindow" type="number" min="256" max="128000" class="settings-input" />
+          </div>
+          <div class="settings-group">
+            <label class="settings-label">Token 用量限制</label>
+            <input id="settingsTokenLimit" type="number" min="1000" class="settings-input" />
+            <span class="settings-hint">达到限制后将停止 AI 调用</span>
+          </div>
+          <button id="settingsSaveBtn" class="login-submit">保存设置</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Token 报表面板 -->
+    <div id="tokenReportOverlay" class="settings-overlay" hidden>
+      <div class="settings-card token-report-card">
+        <div class="settings-header">
+          <h2>📈 Token 用量报表</h2>
+          <button id="tokenReportClose" class="settings-close-btn">&times;</button>
+        </div>
+        <div class="settings-body">
+          <div class="token-summary">
+            <div class="token-stat">
+              <span class="token-stat-label">总用量</span>
+              <span class="token-stat-value" id="tokenTotal">0</span>
+            </div>
+            <div class="token-stat">
+              <span class="token-stat-label">输入 Tokens</span>
+              <span class="token-stat-value" id="tokenPrompt">0</span>
+            </div>
+            <div class="token-stat">
+              <span class="token-stat-label">输出 Tokens</span>
+              <span class="token-stat-value" id="tokenCompletion">0</span>
+            </div>
+          </div>
+          <div class="token-limit-bar">
+            <div class="token-limit-info">
+              <span>用量限制：<strong id="tokenLimitDisplay">100000</strong></span>
+              <span id="tokenPercentDisplay">0%</span>
+            </div>
+            <div class="token-limit-track">
+              <div id="tokenLimitFill" class="token-limit-fill"></div>
+            </div>
+          </div>
+          <h3 class="token-section-title">按操作类型</h3>
+          <div id="tokenByOperation" class="token-op-list"></div>
+          <h3 class="token-section-title">最近记录</h3>
+          <div id="tokenRecent" class="token-recent-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

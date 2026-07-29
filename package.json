@@ -1,0 +1,18 @@
+{
+  "name": "ai-listen-rs",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "tauri:dev": "tauri dev",
+    "tauri:build": "node scripts/set-wix-env.js && tauri build",
+    "wix:install": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-wix.ps1"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2",
+    "vite": "^8.1.5"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.11.1"
+  }
+}

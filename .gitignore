@@ -1,0 +1,8 @@
+/target
+/node_modules
+/src-tauri/target
+/src-tauri/ai-listen-data
+/ai-listen-data
+/.idea
+/dist-ui
+/scripts

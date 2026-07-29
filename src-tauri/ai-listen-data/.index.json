@@ -1,0 +1,53 @@
+{
+  "stats": {
+    "sessions": 1,
+    "documents": 1,
+    "terms": 22
+  },
+  "updated_at": 1785336323,
+  "documents": [
+    {
+      "slug": "product-sync",
+      "title": "Product sync",
+      "updated_at": 1785336321,
+      "searchable_text": "Product sync\n# Product sync\n\n- Decided to build the Rust cross-platform foundation with notes, screenshots, and recording hooks.\n\n../ai-listen-data\\product-sync\\screenshot-1785336320.png\n\n\n",
+      "fields": {
+        "录屏": {},
+        "截图": {
+          "1785336320": 1,
+          "ai": 1,
+          "data": 1,
+          "listen": 1,
+          "png": 1,
+          "product": 1,
+          "screenshot": 1,
+          "sync": 1
+        },
+        "标题": {
+          "product": 1,
+          "sync": 1
+        },
+        "笔记": {
+          "and": 1,
+          "build": 1,
+          "cross": 1,
+          "decided": 1,
+          "foundation": 1,
+          "hooks": 1,
+          "notes": 1,
+          "platform": 1,
+          "product": 1,
+          "recording": 1,
+          "rust": 1,
+          "screenshots": 1,
+          "sync": 1,
+          "the": 1,
+          "to": 1,
+          "with": 1
+        },
+        "转写": {},
+        "音频": {}
+      }
+    }
+  ]
+}
