@@ -397,6 +397,45 @@ pub fn login_phone(phone: &str, password: &str) -> AuthResult {
     }
 }
 
+/// 手机验证码登录（无需密码，验证码即可登录，未注册则自动注册）
+pub fn login_phone_code(phone: &str, code: &str) -> Result<User, String> {
+    // 格式校验
+    if phone.len() != 11 || !phone.chars().all(|c| c.is_ascii_digit()) {
+        return Err("手机号格式不正确（需11位数字）".to_string());
+    }
+
+    // 验证码校验
+    verify_code(phone, code)?;
+
+    let _lock = DB_LOCK.lock().unwrap();
+    let mut db = load_db();
+
+    // 查找已注册用户
+    if let Some(user) = db.users.iter().find(|u| u.phone.as_deref() == Some(phone)) {
+        return Ok(user.clone());
+    }
+
+    // 未注册则自动注册
+    let user = User {
+        id: format!("user_{}", db.next_id),
+        username: format!("user_{}", &phone[phone.len().saturating_sub(4)..]),
+        email: None,
+        phone: Some(phone.to_string()),
+        password_hash: String::new(),
+        created_at: crate::timestamp(),
+        is_vip: false,
+        provider: None,
+        provider_user_id: None,
+        avatar: None,
+    };
+
+    db.next_id += 1;
+    db.users.push(user.clone());
+    save_db(&db)?;
+
+    Ok(user)
+}
+
 /// 用户名/手机号登录（统一入口）
 pub fn login_username(identifier: &str, password: &str) -> AuthResult {
     let _lock = DB_LOCK.lock().unwrap();

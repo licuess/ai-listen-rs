@@ -52,7 +52,6 @@ const els = {
   registerTabs: document.querySelectorAll("#registerMode .login-tab"),
   loginFormEmail: document.querySelector("#loginFormEmail"),
   loginFormPhone: document.querySelector("#loginFormPhone"),
-  loginFormUsername: document.querySelector("#loginFormUsername"),
   registerFormEmail: document.querySelector("#registerFormEmail"),
   registerFormPhone: document.querySelector("#registerFormPhone"),
   loginEmailProvider: document.querySelector("#loginEmailProvider"),
@@ -63,9 +62,6 @@ const els = {
   loginPhoneCode: document.querySelector("#loginPhoneCode"),
   loginPhoneSendCode: document.querySelector("#loginPhoneSendCode"),
   loginPhoneBtn: document.querySelector("#loginPhoneBtn"),
-  loginUsername: document.querySelector("#loginUsername"),
-  loginUsernamePassword: document.querySelector("#loginUsernamePassword"),
-  loginUsernameBtn: document.querySelector("#loginUsernameBtn"),
   goRegister: document.querySelector("#goRegister"),
   goLogin: document.querySelector("#goLogin"),
   regEmail: document.querySelector("#regEmail"),
@@ -173,7 +169,7 @@ els.loginTabs.forEach((tab) => {
     tab.classList.add("active");
     const target = tab.dataset.tab;
     els.loginFormEmail.hidden = target !== "email";
-    els.loginFormUsername.hidden = target !== "username";
+    els.loginFormPhone.hidden = target !== "phone";
   });
 });
 
@@ -248,18 +244,22 @@ els.loginPhoneBtn.addEventListener("click", async () => {
   const phone = els.loginPhone.value.trim();
   const code = els.loginPhoneCode.value.trim();
   if (!phone || !code) { setStatus("请填写手机号和验证码"); return; }
-  setStatus("正在验证...");
-  try {
-    await invoke("verify_code", { target: phone, code });
-    const result = await invoke("login_phone", { phone, password: code });
-    if (result.success) {
-      doLogin("phone", { phone, user: result.user });
-    } else {
-      setStatus(result.message);
+
+  // 显示滑块验证码
+  showSliderCaptcha(async (success) => {
+    if (!success) return;
+    setStatus("正在登录...");
+    try {
+      const result = await invoke("login_phone_code", { phone, code });
+      if (result.success) {
+        doLogin("phone", { phone, user: result.user });
+      } else {
+        setStatus(result.message);
+      }
+    } catch (error) {
+      setStatus("登录失败：" + String(error));
     }
-  } catch (error) {
-    setStatus(String(error));
-  }
+  });
 });
 
 els.loginPhoneSendCode.addEventListener("click", async () => {
@@ -285,49 +285,31 @@ els.loginPhoneSendCode.addEventListener("click", async () => {
   }
 });
 
-els.loginUsernameBtn.addEventListener("click", async () => {
-  const username = els.loginUsername.value.trim();
-  const password = els.loginUsernamePassword.value;
-  if (!username || !password) { setStatus("请填写用户名和密码"); return; }
-
-  // 显示滑块验证码
-  showSliderCaptcha(async (success) => {
-    if (!success) return;
-    setStatus("正在登录...");
-    try {
-      const result = await invoke("login_username", { identifier: username, password });
-      if (result.success) {
-        doLogin("username", { username, user: result.user });
-      } else {
-        setStatus(result.message);
-      }
-    } catch (error) {
-      setStatus("登录失败：" + String(error));
-    }
-  });
-});
-
 document.querySelectorAll(".social-btn").forEach((btn) => {
   btn.addEventListener("click", async () => {
     const method = btn.dataset.method;
-    setStatus(`正在跳转到${btn.textContent}授权...`);
-    try {
-      // 调用后端执行完整 OAuth 流程（启动本地回调服务器 -> 打开浏览器 -> 等待回调 -> 交换 token -> 获取用户信息）
-      const result = await invoke("social_login", { provider: method });
-      if (result.success) {
-        doLogin(method, { provider: method, user: result.user });
-        setStatus(result.message);
-      } else {
-        setStatus(result.message);
+
+    // 显示滑块验证码
+    showSliderCaptcha(async (success) => {
+      if (!success) return;
+      setStatus(`正在跳转到${btn.textContent}授权...`);
+      try {
+        const result = await invoke("social_login", { provider: method });
+        if (result.success) {
+          doLogin(method, { provider: method, user: result.user });
+          setStatus(result.message);
+        } else {
+          setStatus(result.message);
+        }
+      } catch (error) {
+        const errMsg = String(error);
+        if (errMsg.includes("未配置")) {
+          setStatus(`${btn.textContent}登录未配置：请在 src-tauri/.env 中填入对应平台的密钥`);
+        } else {
+          setStatus(`${btn.textContent}登录失败：${errMsg}`);
+        }
       }
-    } catch (error) {
-      const errMsg = String(error);
-      if (errMsg.includes("未配置")) {
-        setStatus(`${btn.textContent}登录未配置：请在 src-tauri/.env 中填入对应平台的密钥`);
-      } else {
-        setStatus(`${btn.textContent}登录失败：${errMsg}`);
-      }
-    }
+    });
   });
 });
 

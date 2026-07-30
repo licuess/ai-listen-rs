@@ -373,6 +373,22 @@ fn login_phone(phone: String, password: String) -> AuthResult {
 }
 
 #[tauri::command]
+fn login_phone_code(phone: String, code: String) -> Result<AuthResult, String> {
+    match users::login_phone_code(&phone, &code) {
+        Ok(user) => Ok(AuthResult {
+            success: true,
+            message: "登录成功".to_string(),
+            user: Some(user),
+        }),
+        Err(e) => Ok(AuthResult {
+            success: false,
+            message: e,
+            user: None,
+        }),
+    }
+}
+
+#[tauri::command]
 fn login_username(identifier: String, password: String) -> AuthResult {
     users::login_username(&identifier, &password)
 }
@@ -501,6 +517,7 @@ fn main() {
             register_username,
             login_email,
             login_phone,
+            login_phone_code,
             login_username,
             get_social_auth_url,
             open_url,
