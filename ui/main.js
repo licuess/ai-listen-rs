@@ -348,9 +348,8 @@ els.registerEmailBtn.addEventListener("click", async () => {
   if (password !== confirm) { setStatus("两次密码不一致"); return; }
   setStatus("正在验证...");
   try {
-    await invoke("verify_code", { target: email, code });
-    setStatus("正在注册...");
-    const result = await invoke("register_email", { email, password });
+    // 后端会校验验证码 + 检查数据库是否已注册
+    const result = await invoke("register_email", { email, password, code });
     if (result.success) {
       localStorage.setItem("ai_listen_login", JSON.stringify({ method: "register_email", info: { email }, user: result.user, time: Date.now() }));
       els.loginOverlay.hidden = true;
@@ -399,9 +398,8 @@ els.registerPhoneBtn.addEventListener("click", async () => {
   if (password.length < 6 || password.length > 20) { setStatus("密码长度为6-20位"); return; }
   setStatus("正在验证...");
   try {
-    await invoke("verify_code", { target: phone, code });
-    setStatus("正在注册...");
-    const result = await invoke("register_phone", { phone, password });
+    // 后端会校验验证码 + 检查数据库是否已注册
+    const result = await invoke("register_phone", { phone, password, code });
     if (result.success) {
       localStorage.setItem("ai_listen_login", JSON.stringify({ method: "register_phone", info: { phone }, user: result.user, time: Date.now() }));
       els.loginOverlay.hidden = true;

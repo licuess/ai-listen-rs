@@ -220,11 +220,18 @@ pub fn verify_code(target: &str, code: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// 邮箱注册
-pub fn register_email(email: &str, password: &str) -> Result<User, String> {
+/// 邮箱注册（需要验证码）
+pub fn register_email(email: &str, password: &str, code: &str) -> Result<User, String> {
+    // 格式校验
+    if !email.contains('@') || !email.contains('.') {
+        return Err("邮箱格式不正确".to_string());
+    }
     if password.len() < 6 || password.len() > 20 {
         return Err("密码长度为6-20位".to_string());
     }
+
+    // 验证码校验
+    verify_code(email, code)?;
 
     let _lock = DB_LOCK.lock().unwrap();
     let mut db = load_db();
@@ -254,11 +261,18 @@ pub fn register_email(email: &str, password: &str) -> Result<User, String> {
     Ok(user)
 }
 
-/// 手机注册
-pub fn register_phone(phone: &str, password: &str) -> Result<User, String> {
+/// 手机注册（需要验证码）
+pub fn register_phone(phone: &str, password: &str, code: &str) -> Result<User, String> {
+    // 格式校验
+    if phone.len() != 11 || !phone.chars().all(|c| c.is_ascii_digit()) {
+        return Err("手机号格式不正确（需11位数字）".to_string());
+    }
     if password.len() < 6 || password.len() > 20 {
         return Err("密码长度为6-20位".to_string());
     }
+
+    // 验证码校验
+    verify_code(phone, code)?;
 
     let _lock = DB_LOCK.lock().unwrap();
     let mut db = load_db();
@@ -287,18 +301,23 @@ pub fn register_phone(phone: &str, password: &str) -> Result<User, String> {
     Ok(user)
 }
 
-/// 用户名注册
+/// 用户名注册（检查数据库是否已存在）
 pub fn register_username(username: &str, password: &str) -> Result<User, String> {
+    // 格式校验
     if password.len() < 6 || password.len() > 20 {
         return Err("密码长度为6-20位".to_string());
     }
     if username.len() < 2 || username.len() > 20 {
         return Err("用户名为2-20个字符".to_string());
     }
+    if !username.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-') {
+        return Err("用户名只能包含字母、数字、下划线和连字符".to_string());
+    }
 
     let _lock = DB_LOCK.lock().unwrap();
     let mut db = load_db();
 
+    // 检查用户名是否已存在
     if db.users.iter().any(|u| u.username == username) {
         return Err("该用户名已被占用".to_string());
     }

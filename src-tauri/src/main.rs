@@ -315,8 +315,8 @@ fn verify_code(target: String, code: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn register_email(email: String, password: String) -> Result<AuthResult, String> {
-    match users::register_email(&email, &password) {
+fn register_email(email: String, password: String, code: String) -> Result<AuthResult, String> {
+    match users::register_email(&email, &password, &code) {
         Ok(user) => Ok(AuthResult {
             success: true,
             message: "注册成功".to_string(),
@@ -331,8 +331,8 @@ fn register_email(email: String, password: String) -> Result<AuthResult, String>
 }
 
 #[tauri::command]
-fn register_phone(phone: String, password: String) -> Result<AuthResult, String> {
-    match users::register_phone(&phone, &password) {
+fn register_phone(phone: String, password: String, code: String) -> Result<AuthResult, String> {
+    match users::register_phone(&phone, &password, &code) {
         Ok(user) => Ok(AuthResult {
             success: true,
             message: "注册成功".to_string(),
