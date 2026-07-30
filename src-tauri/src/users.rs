@@ -148,9 +148,9 @@ pub fn send_email_code(email: &str) -> Result<String, String> {
     // 尝试通过 SMTP 发送
     match crate::email::send_verification_email(email, &code) {
         Ok(_) => Ok("验证码已发送到邮箱".to_string()),
-        Err(_) => {
+        Err(e) => {
             // SMTP 不可用时，返回验证码供调试（桌面开发模式）
-            Ok(format!("验证码：{}（SMTP 未配置，开发模式直接显示）", code))
+            Ok(format!("验证码：{}（{}，开发模式直接显示）", code, e))
         }
     }
 }

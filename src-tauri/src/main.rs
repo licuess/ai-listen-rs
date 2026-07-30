@@ -462,6 +462,9 @@ fn social_login(provider: String) -> Result<OAuthResult, String> {
 }
 
 fn main() {
+    // 加载 .env 环境变量配置
+    let _ = dotenv::dotenv();
+
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             list_sessions,

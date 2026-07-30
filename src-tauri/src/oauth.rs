@@ -104,7 +104,7 @@ pub fn oauth_login(provider: &str) -> Result<OAuthUser, String> {
     let auth_url = match provider {
         "github" => {
             let client_id = std::env::var("GITHUB_CLIENT_ID")
-                .map_err(|_| "GitHub Client ID 未配置".to_string())?;
+                .map_err(|_| "GitHub 未配置，请在 src-tauri/.env 中设置 GITHUB_CLIENT_ID 和 GITHUB_CLIENT_SECRET（https://github.com/settings/developers）".to_string())?;
             format!(
                 "https://github.com/login/oauth/authorize?client_id={}&redirect_uri={}&scope=user:email",
                 client_id, redirect_uri
@@ -112,7 +112,7 @@ pub fn oauth_login(provider: &str) -> Result<OAuthUser, String> {
         }
         "qq" => {
             let app_id = std::env::var("QQ_APP_ID")
-                .map_err(|_| "QQ App ID 未配置".to_string())?;
+                .map_err(|_| "QQ 未配置，请在 src-tauri/.env 中设置 QQ_APP_ID 和 QQ_APP_KEY（https://connect.qq.com）".to_string())?;
             format!(
                 "https://graph.qq.com/oauth2.0/authorize?response_type=code&client_id={}&redirect_uri={}&scope=get_user_info",
                 app_id, redirect_uri
@@ -120,7 +120,7 @@ pub fn oauth_login(provider: &str) -> Result<OAuthUser, String> {
         }
         "wechat" => {
             let app_id = std::env::var("WECHAT_APP_ID")
-                .map_err(|_| "微信 App ID 未配置".to_string())?;
+                .map_err(|_| "微信未配置，请在 src-tauri/.env 中设置 WECHAT_APP_ID 和 WECHAT_APP_SECRET（https://open.weixin.qq.com）".to_string())?;
             format!(
                 "https://open.weixin.qq.com/connect/qrconnect?appid={}&redirect_uri={}&response_type=code&scope=snsapi_login",
                 app_id, redirect_uri
@@ -128,7 +128,7 @@ pub fn oauth_login(provider: &str) -> Result<OAuthUser, String> {
         }
         "alipay" => {
             let app_id = std::env::var("ALIPAY_APP_ID")
-                .map_err(|_| "支付宝 App ID 未配置".to_string())?;
+                .map_err(|_| "支付宝未配置，请在 src-tauri/.env 中设置 ALIPAY_APP_ID 和 ALIPAY_PRIVATE_KEY（https://open.alipay.com）".to_string())?;
             format!(
                 "https://openauth.alipay.com/oauth2/publicAppAuthorize.htm?app_id={}&scope=auth_user&redirect_uri={}",
                 app_id, redirect_uri

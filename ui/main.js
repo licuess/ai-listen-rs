@@ -67,7 +67,6 @@ const els = {
   loginUsernamePassword: document.querySelector("#loginUsernamePassword"),
   loginUsernameBtn: document.querySelector("#loginUsernameBtn"),
   goRegister: document.querySelector("#goRegister"),
-  goRegisterVip: document.querySelector("#goRegisterVip"),
   goLogin: document.querySelector("#goLogin"),
   regEmail: document.querySelector("#regEmail"),
   regEmailProvider: document.querySelector("#regEmailProvider"),
@@ -191,10 +190,6 @@ els.registerTabs.forEach((tab) => {
 
 // 登录/注册模式切换
 els.goRegister.addEventListener("click", () => {
-  els.loginMode.hidden = true;
-  els.registerMode.hidden = false;
-});
-els.goRegisterVip.addEventListener("click", () => {
   els.loginMode.hidden = true;
   els.registerMode.hidden = false;
 });
@@ -326,7 +321,12 @@ document.querySelectorAll(".social-btn").forEach((btn) => {
         setStatus(result.message);
       }
     } catch (error) {
-      setStatus(`${btn.textContent}登录失败：${String(error)}`);
+      const errMsg = String(error);
+      if (errMsg.includes("未配置")) {
+        setStatus(`${btn.textContent}登录未配置：请在 src-tauri/.env 中填入对应平台的密钥`);
+      } else {
+        setStatus(`${btn.textContent}登录失败：${errMsg}`);
+      }
     }
   });
 });

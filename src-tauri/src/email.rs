@@ -20,7 +20,7 @@ pub fn send_verification_email(to: &str, code: &str) -> Result<(), String> {
     let smtp_pass = std::env::var("SMTP_PASS").unwrap_or_default();
 
     if smtp_host.is_empty() || smtp_user.is_empty() || smtp_pass.is_empty() {
-        return Err("SMTP 未配置".to_string());
+        return Err("SMTP 未配置，请在 src-tauri/.env 中设置 SMTP_HOST/SMTP_USER/SMTP_PASS".to_string());
     }
 
     let email = Message::builder()
