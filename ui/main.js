@@ -297,21 +297,18 @@ els.loginUsernameBtn.addEventListener("click", async () => {
 document.querySelectorAll(".social-btn").forEach((btn) => {
   btn.addEventListener("click", async () => {
     const method = btn.dataset.method;
-    setStatus(`正在跳转到${btn.textContent}登录...`);
+    setStatus(`正在跳转到${btn.textContent}授权...`);
     try {
-      // 调用后端获取 OAuth 授权 URL
-      const authUrl = await invoke("get_social_auth_url", { provider: method });
-      if (authUrl) {
-        // 在浏览器中打开授权页面
-        await invoke("open_url", { url: authUrl });
-        setStatus(`请在浏览器中完成${btn.textContent}授权`);
+      // 调用后端执行完整 OAuth 流程（启动本地回调服务器 -> 打开浏览器 -> 等待回调 -> 交换 token -> 获取用户信息）
+      const result = await invoke("social_login", { provider: method });
+      if (result.success) {
+        doLogin(method, { provider: method, user: result.user });
+        setStatus(result.message);
       } else {
-        // 降级：直接登录（开发模式）
-        doLogin(method, { provider: method });
+        setStatus(result.message);
       }
     } catch (error) {
-      // 后端未实现时降级处理
-      doLogin(method, { provider: method });
+      setStatus(`${btn.textContent}登录失败：${String(error)}`);
     }
   });
 });

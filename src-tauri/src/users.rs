@@ -14,6 +14,9 @@ pub struct User {
     pub password_hash: String,
     pub created_at: String,
     pub is_vip: bool,
+    pub provider: Option<String>,
+    pub provider_user_id: Option<String>,
+    pub avatar: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -33,9 +36,9 @@ pub struct AuthResult {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct UserDatabase {
-    users: Vec<User>,
-    next_id: u64,
+pub struct UserDatabase {
+    pub users: Vec<User>,
+    pub next_id: u64,
 }
 
 impl Default for UserDatabase {
@@ -49,6 +52,16 @@ impl Default for UserDatabase {
 
 fn db_path() -> PathBuf {
     PathBuf::from("../ai-listen-data/.users.json")
+}
+
+pub static DB_LOCK_EXTERNAL: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
+
+pub fn load_db_external() -> UserDatabase {
+    load_db()
+}
+
+pub fn save_db_external(db: &UserDatabase) -> Result<(), String> {
+    save_db(db)
 }
 
 static DB_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
@@ -229,6 +242,9 @@ pub fn register_email(email: &str, password: &str) -> Result<User, String> {
         password_hash: hash_password(password),
         created_at: crate::timestamp(),
         is_vip: false,
+        provider: None,
+        provider_user_id: None,
+        avatar: None,
     };
 
     db.next_id += 1;
@@ -259,6 +275,9 @@ pub fn register_phone(phone: &str, password: &str) -> Result<User, String> {
         password_hash: hash_password(password),
         created_at: crate::timestamp(),
         is_vip: false,
+        provider: None,
+        provider_user_id: None,
+        avatar: None,
     };
 
     db.next_id += 1;
@@ -292,6 +311,9 @@ pub fn register_username(username: &str, password: &str) -> Result<User, String>
         password_hash: hash_password(password),
         created_at: crate::timestamp(),
         is_vip: false,
+        provider: None,
+        provider_user_id: None,
+        avatar: None,
     };
 
     db.next_id += 1;

@@ -4,6 +4,7 @@ mod capture;
 mod email;
 mod export;
 mod index;
+mod oauth;
 mod sessions;
 mod settings;
 mod sms;
@@ -25,6 +26,7 @@ use settings::AppSettings;
 use tasks::TaskStatus;
 use tokens::TokenReport;
 use users::AuthResult;
+use oauth::OAuthResult;
 
 fn store() -> SessionStore {
     // 数据目录放在 src-tauri 外部，避免 Tauri dev 文件监听器误触发重建
@@ -453,6 +455,12 @@ fn open_url(url: String) -> Result<(), String> {
     Ok(())
 }
 
+/// 第三方社交登录（完整 OAuth 流程）
+#[tauri::command]
+fn social_login(provider: String) -> Result<OAuthResult, String> {
+    oauth::social_login_or_register(&provider)
+}
+
 fn main() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
@@ -492,7 +500,8 @@ fn main() {
             login_phone,
             login_username,
             get_social_auth_url,
-            open_url
+            open_url,
+            social_login
         ])
         .run(tauri::generate_context!())
         .expect("failed to run AI Listen RS");
