@@ -337,6 +337,22 @@
       </div>
     </div>
 
+    <!-- 滑块验证码 -->
+    <div id="sliderCaptcha" class="slider-captcha-overlay" hidden>
+      <div class="slider-captcha-box">
+        <button class="slider-captcha-close" id="sliderCaptchaClose">&times;</button>
+        <div class="slider-captcha-title">安全验证</div>
+        <div class="slider-captcha-canvas">
+          <canvas id="captchaCanvas" width="292" height="160"></canvas>
+        </div>
+        <div class="slider-captcha-track" id="captchaTrack">
+          <div class="slider-captcha-fill" id="captchaFill"></div>
+          <div class="slider-captcha-track-text" id="captchaTrackText">拖动滑块完成验证</div>
+          <div class="slider-captcha-thumb" id="captchaThumb">&rarr;</div>
+        </div>
+      </div>
+    </div>
+
     <script type="module" src="./main.js"></script>
   </body>
 </html>

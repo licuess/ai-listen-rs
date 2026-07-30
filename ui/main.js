@@ -101,7 +101,15 @@ const els = {
   tokenLimitFill: document.querySelector("#tokenLimitFill"),
   tokenByOperation: document.querySelector("#tokenByOperation"),
   tokenRecent: document.querySelector("#tokenRecent"),
-  mainShell: document.querySelector("#mainShell")
+  mainShell: document.querySelector("#mainShell"),
+  // 滑块验证码
+  sliderCaptcha: document.querySelector("#sliderCaptcha"),
+  sliderCaptchaClose: document.querySelector("#sliderCaptchaClose"),
+  captchaCanvas: document.querySelector("#captchaCanvas"),
+  captchaTrack: document.querySelector("#captchaTrack"),
+  captchaTrackText: document.querySelector("#captchaTrackText"),
+  captchaThumb: document.querySelector("#captchaThumb"),
+  captchaFill: document.querySelector("#captchaFill")
 };
 
 els.newSession.addEventListener("click", createSession);
@@ -223,17 +231,22 @@ els.loginEmailBtn.addEventListener("click", async () => {
   const password = els.loginEmailPassword.value;
   if (!account || !password) { setStatus("请填写账号和密码"); return; }
   const fullEmail = account.includes("@") ? account : account + provider;
-  setStatus("正在登录...");
-  try {
-    const result = await invoke("login_email", { email: fullEmail, password });
-    if (result.success) {
-      doLogin("email", { email: fullEmail, user: result.user });
-    } else {
-      setStatus(result.message);
+
+  // 显示滑块验证码
+  showSliderCaptcha(async (success) => {
+    if (!success) return;
+    setStatus("正在登录...");
+    try {
+      const result = await invoke("login_email", { email: fullEmail, password });
+      if (result.success) {
+        doLogin("email", { email: fullEmail, user: result.user });
+      } else {
+        setStatus(result.message);
+      }
+    } catch (error) {
+      setStatus("登录失败：" + String(error));
     }
-  } catch (error) {
-    setStatus("登录失败：" + String(error));
-  }
+  });
 });
 
 els.loginPhoneBtn.addEventListener("click", async () => {
@@ -281,17 +294,22 @@ els.loginUsernameBtn.addEventListener("click", async () => {
   const username = els.loginUsername.value.trim();
   const password = els.loginUsernamePassword.value;
   if (!username || !password) { setStatus("请填写用户名和密码"); return; }
-  setStatus("正在登录...");
-  try {
-    const result = await invoke("login_username", { identifier: username, password });
-    if (result.success) {
-      doLogin("username", { username, user: result.user });
-    } else {
-      setStatus(result.message);
+
+  // 显示滑块验证码
+  showSliderCaptcha(async (success) => {
+    if (!success) return;
+    setStatus("正在登录...");
+    try {
+      const result = await invoke("login_username", { identifier: username, password });
+      if (result.success) {
+        doLogin("username", { username, user: result.user });
+      } else {
+        setStatus(result.message);
+      }
+    } catch (error) {
+      setStatus("登录失败：" + String(error));
     }
-  } catch (error) {
-    setStatus("登录失败：" + String(error));
-  }
+  });
 });
 
 document.querySelectorAll(".social-btn").forEach((btn) => {
@@ -346,24 +364,29 @@ els.registerEmailBtn.addEventListener("click", async () => {
   if (!code) { setStatus("请输入验证码"); return; }
   if (password.length < 6 || password.length > 20) { setStatus("密码长度为6-20位"); return; }
   if (password !== confirm) { setStatus("两次密码不一致"); return; }
-  setStatus("正在验证...");
-  try {
-    // 后端会校验验证码 + 检查数据库是否已注册
-    const result = await invoke("register_email", { email, password, code });
-    if (result.success) {
-      localStorage.setItem("ai_listen_login", JSON.stringify({ method: "register_email", info: { email }, user: result.user, time: Date.now() }));
-      els.loginOverlay.hidden = true;
-      els.mainShell.hidden = false;
-      setStatus("注册成功，已自动登录");
-      await loadAudioDevices();
-      await loadSessions();
-      await loadTasks();
-    } else {
-      setStatus(result.message);
+
+  // 显示滑块验证码
+  showSliderCaptcha(async (success) => {
+    if (!success) return;
+    setStatus("正在验证...");
+    try {
+      // 后端会校验验证码 + 检查数据库是否已注册
+      const result = await invoke("register_email", { email, password, code });
+      if (result.success) {
+        localStorage.setItem("ai_listen_login", JSON.stringify({ method: "register_email", info: { email }, user: result.user, time: Date.now() }));
+        els.loginOverlay.hidden = true;
+        els.mainShell.hidden = false;
+        setStatus("注册成功，已自动登录");
+        await loadAudioDevices();
+        await loadSessions();
+        await loadTasks();
+      } else {
+        setStatus(result.message);
+      }
+    } catch (error) {
+      setStatus(String(error));
     }
-  } catch (error) {
-    setStatus(String(error));
-  }
+  });
 });
 
 els.regPhoneSendCode.addEventListener("click", async () => {
@@ -396,24 +419,29 @@ els.registerPhoneBtn.addEventListener("click", async () => {
   if (!phone) { setStatus("请输入手机号"); return; }
   if (!code) { setStatus("请输入验证码"); return; }
   if (password.length < 6 || password.length > 20) { setStatus("密码长度为6-20位"); return; }
-  setStatus("正在验证...");
-  try {
-    // 后端会校验验证码 + 检查数据库是否已注册
-    const result = await invoke("register_phone", { phone, password, code });
-    if (result.success) {
-      localStorage.setItem("ai_listen_login", JSON.stringify({ method: "register_phone", info: { phone }, user: result.user, time: Date.now() }));
-      els.loginOverlay.hidden = true;
-      els.mainShell.hidden = false;
-      setStatus("注册成功，已自动登录");
-      await loadAudioDevices();
-      await loadSessions();
-      await loadTasks();
-    } else {
-      setStatus(result.message);
+
+  // 显示滑块验证码
+  showSliderCaptcha(async (success) => {
+    if (!success) return;
+    setStatus("正在验证...");
+    try {
+      // 后端会校验验证码 + 检查数据库是否已注册
+      const result = await invoke("register_phone", { phone, password, code });
+      if (result.success) {
+        localStorage.setItem("ai_listen_login", JSON.stringify({ method: "register_phone", info: { phone }, user: result.user, time: Date.now() }));
+        els.loginOverlay.hidden = true;
+        els.mainShell.hidden = false;
+        setStatus("注册成功，已自动登录");
+        await loadAudioDevices();
+        await loadSessions();
+        await loadTasks();
+      } else {
+        setStatus(result.message);
+      }
+    } catch (error) {
+      setStatus(String(error));
     }
-  } catch (error) {
-    setStatus(String(error));
-  }
+  });
 });
 
 // ========== 设置逻辑 ==========
@@ -924,3 +952,136 @@ function renderEmpty() {
 function setStatus(text) {
   els.statusText.textContent = text;
 }
+
+// ========== 滑块验证码 ==========
+let captchaCallback = null;
+let captchaTargetX = 0;
+let captchaIsDragging = false;
+let captchaStartX = 0;
+
+function initSliderCaptcha() {
+  const canvas = els.captchaCanvas;
+  const ctx = canvas.getContext("2d");
+  const width = canvas.width;
+  const height = canvas.height;
+
+  // 清空画布
+  ctx.clearRect(0, 0, width, height);
+
+  // 绘制背景图案
+  const gradient = ctx.createLinearGradient(0, 0, width, height);
+  gradient.addColorStop(0, "#e8f5e9");
+  gradient.addColorStop(0.5, "#f0f5f2");
+  gradient.addColorStop(1, "#e0f2f1");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, width, height);
+
+  // 绘制随机图形
+  for (let i = 0; i < 8; i++) {
+    ctx.beginPath();
+    ctx.arc(
+      Math.random() * width,
+      Math.random() * height,
+      Math.random() * 30 + 10,
+      0,
+      Math.PI * 2
+    );
+    ctx.fillStyle = `rgba(${Math.random() * 100 + 100}, ${Math.random() * 150 + 100}, ${Math.random() * 100 + 100}, 0.3)`;
+    ctx.fill();
+  }
+
+  // 绘制目标滑块位置（凹槽）
+  captchaTargetX = Math.random() * (width - 80) + 40;
+  const targetY = Math.random() * (height - 60) + 20;
+
+  ctx.beginPath();
+  ctx.arc(captchaTargetX, targetY, 20, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
+  ctx.fill();
+  ctx.strokeStyle = "rgba(0, 0, 0, 0.3)";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // 绘制滑块
+  ctx.beginPath();
+  ctx.arc(20, targetY, 18, 0, Math.PI * 2);
+  ctx.fillStyle = "#236d5c";
+  ctx.fill();
+
+  // 重置滑块位置
+  els.captchaThumb.style.left = "2px";
+  els.captchaFill.style.width = "0px";
+  els.captchaThumb.className = "slider-captcha-thumb";
+  els.captchaThumb.innerHTML = "&rarr;";
+  els.captchaTrackText.textContent = "拖动滑块完成验证";
+}
+
+function showSliderCaptcha(callback) {
+  captchaCallback = callback;
+  els.sliderCaptcha.hidden = false;
+  initSliderCaptcha();
+}
+
+function hideSliderCaptcha() {
+  els.sliderCaptcha.hidden = true;
+  captchaCallback = null;
+}
+
+// 关闭按钮
+els.sliderCaptchaClose.addEventListener("click", hideSliderCaptcha);
+els.sliderCaptcha.addEventListener("click", (e) => {
+  if (e.target === els.sliderCaptcha) hideSliderCaptcha();
+});
+
+// 滑块拖拽逻辑
+els.captchaThumb.addEventListener("mousedown", (e) => {
+  captchaIsDragging = true;
+  captchaStartX = e.clientX;
+  e.preventDefault();
+});
+
+document.addEventListener("mousemove", (e) => {
+  if (!captchaIsDragging) return;
+
+  const trackWidth = els.captchaTrack.offsetWidth;
+  const thumbWidth = els.captchaThumb.offsetWidth;
+  const maxMove = trackWidth - thumbWidth - 4;
+
+  let deltaX = e.clientX - captchaStartX;
+  deltaX = Math.max(0, Math.min(deltaX, maxMove));
+
+  els.captchaThumb.style.left = `${deltaX + 2}px`;
+  els.captchaFill.style.width = `${deltaX + thumbWidth / 2}px`;
+});
+
+document.addEventListener("mouseup", () => {
+  if (!captchaIsDragging) return;
+  captchaIsDragging = false;
+
+  const thumbLeft = parseInt(els.captchaThumb.style.left) || 2;
+  const tolerance = 10; // 允许误差
+
+  // 检查是否到达目标位置
+  if (Math.abs(thumbLeft - captchaTargetX + 18) < tolerance) {
+    // 验证成功
+    els.captchaThumb.className = "slider-captcha-thumb success";
+    els.captchaThumb.innerHTML = "&check;";
+    els.captchaTrackText.textContent = "验证成功";
+    els.captchaFill.style.background = "#07c160";
+
+    setTimeout(() => {
+      hideSliderCaptcha();
+      if (captchaCallback) captchaCallback(true);
+    }, 500);
+  } else {
+    // 验证失败
+    els.captchaThumb.className = "slider-captcha-thumb fail";
+    els.captchaThumb.innerHTML = "&times;";
+    els.captchaTrackText.textContent = "验证失败，请重试";
+    els.captchaFill.style.background = "#ff4d4f";
+
+    setTimeout(() => {
+      initSliderCaptcha();
+    }, 1000);
+  }
+});
