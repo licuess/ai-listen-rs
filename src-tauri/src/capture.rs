@@ -1,6 +1,11 @@
 use std::fs;
 use std::path::Path;
-use std::process::{Command, Stdio};
+use std::process::{Command, Stdio, ChildStdin};
+use std::sync::Mutex;
+use std::sync::LazyLock;
+
+// 保存录屏进程的 stdin 管道（用于优雅停止）
+static RECORD_STDIN: LazyLock<Mutex<Option<ChildStdin>>> = LazyLock::new(|| Mutex::new(None));
 
 pub fn capture_screenshot(output: &Path) -> Result<(), String> {
     if cfg!(target_os = "windows") {
@@ -23,6 +28,12 @@ pub fn start_recording(output: &Path, pid_file: &Path) -> Result<(), String> {
             "30",
             "-i",
             "desktop",
+            "-c:v",
+            "libx264",
+            "-preset",
+            "ultrafast",
+            "-pix_fmt",
+            "yuv420p",
             output.to_string_lossy().as_ref(),
         ]);
         command
@@ -44,17 +55,28 @@ pub fn start_recording(output: &Path, pid_file: &Path) -> Result<(), String> {
             "30",
             "-i",
             ":0.0",
+            "-c:v",
+            "libx264",
+            "-preset",
+            "ultrafast",
+            "-pix_fmt",
+            "yuv420p",
             output.to_string_lossy().as_ref(),
         ]);
         command
     };
 
-    let child = command
-        .stdin(Stdio::null())
+    let mut child = command
+        .stdin(Stdio::piped())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
         .map_err(|error| format!("failed to start recorder: {error}"))?;
+
+    // 保存 stdin 管道用于后续优雅停止
+    if let Some(stdin) = child.stdin.take() {
+        *RECORD_STDIN.lock().unwrap() = Some(stdin);
+    }
 
     fs::write(pid_file, child.id().to_string()).map_err(|error| error.to_string())?;
     Ok(())
@@ -66,11 +88,24 @@ pub fn stop_recording(pid_file: &Path) -> Result<(), String> {
         .trim()
         .to_string();
 
-    // 清理 PID 文件，无论进程是否还在
+    // 清理 PID 文件
     let _ = fs::remove_file(pid_file);
 
+    // 通过 stdin 发送 "q" 优雅停止 ffmpeg（确保 mp4 文件正确关闭）
+    {
+        use std::io::Write;
+        let mut stdin_lock = RECORD_STDIN.lock().unwrap();
+        if let Some(mut stdin) = stdin_lock.take() {
+            let _ = stdin.write_all(b"q");
+            let _ = stdin.flush();
+        }
+    }
+
+    // 等待 ffmpeg 自行退出并写完文件头
+    std::thread::sleep(std::time::Duration::from_millis(1500));
+
+    // 如果仍然在运行，强制结束（兜底）
     if cfg!(target_os = "windows") {
-        // taskkill 失败不报错（进程可能已退出）
         let _ = Command::new("taskkill")
             .args(["/PID", &pid, "/T", "/F"])
             .stdin(Stdio::null())

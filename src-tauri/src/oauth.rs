@@ -417,28 +417,22 @@ pub fn social_login_or_register(provider: &str) -> Result<OAuthResult, String> {
 
     // 检查用户是否已存在
     let _lock = crate::users::DB_LOCK_EXTERNAL.lock().unwrap();
-    let mut db = crate::users::load_db_external();
 
-    let existing = db.users.iter().find(|u| {
-        u.provider_user_id.as_deref() == Some(&oauth_user.provider_user_id)
-            && u.provider.as_deref() == Some(provider)
-    });
-
-    if let Some(user) = existing {
+    if let Some(user) = crate::users::find_user_by_provider(provider, &oauth_user.provider_user_id) {
         return Ok(OAuthResult {
             success: true,
             message: "登录成功".to_string(),
-            user: Some(user.clone()),
+            user: Some(user),
         });
     }
 
     // 自动注册新用户
     let new_user = crate::users::User {
-        id: format!("user_{}", db.next_id),
+        id: crate::users::next_user_id(),
         username: oauth_user.username.clone(),
         email: oauth_user.email.clone(),
         phone: None,
-        password_hash: String::new(), // 社交登录无需密码
+        password_hash: String::new(),
         created_at: crate::timestamp(),
         is_vip: false,
         provider: Some(provider.to_string()),
@@ -446,9 +440,7 @@ pub fn social_login_or_register(provider: &str) -> Result<OAuthResult, String> {
         avatar: oauth_user.avatar.clone(),
     };
 
-    db.next_id += 1;
-    db.users.push(new_user.clone());
-    crate::users::save_db_external(&db)?;
+    crate::users::insert_user(&new_user)?;
 
     Ok(OAuthResult {
         success: true,

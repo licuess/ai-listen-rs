@@ -15,6 +15,7 @@
             <h1>听记工作台</h1>
           </div>
           <button id="newSession" class="icon-button" title="新建会议">+</button>
+          <button id="manageSessionsBtn" class="icon-button" title="管理会议" style="font-size:14px;">🗃</button>
         </div>
 
         <label class="search">
@@ -56,6 +57,7 @@
             <button id="saveButton" class="primary">💾 保存</button>
             <button id="settingsBtn" title="设置">⚙️</button>
             <button id="tokenReportBtn" title="Token 报表">📈</button>
+            <button id="profileBtn" title="个人中心">👤</button>
           </div>
         </header>
 
@@ -65,29 +67,32 @@
           </section>
 
           <aside class="inspector">
-            <section>
+            <section class="materials-section">
               <h3>素材</h3>
-              <div class="metric-row">
-                <span>截图</span>
+              <div class="metric-row clickable" data-type="screenshots">
+                <span>📷 截图</span>
                 <strong id="screenshotCount">0</strong>
               </div>
-              <div class="metric-row">
-                <span>录屏</span>
+              <div class="metric-row clickable" data-type="recordings">
+                <span>🎬 录屏</span>
                 <strong id="recordingCount">0</strong>
               </div>
-              <div class="metric-row">
-                <span>音频</span>
+              <div class="metric-row clickable" data-type="audio">
+                <span>🎙 音频</span>
                 <strong id="audioCount">0</strong>
               </div>
-              <div class="metric-row">
-                <span>转写</span>
+              <div class="metric-row clickable" data-type="transcripts">
+                <span>📝 转写</span>
                 <strong id="transcriptCount">0</strong>
               </div>
-            </section>
-
-            <section id="screenshotPreviewSection" hidden>
-              <h3>全部截图 <span id="screenshotPreviewCount" class="count-badge">0</span></h3>
-              <div id="screenshotGrid" class="screenshot-grid"></div>
+              <!-- 展开的素材列表 -->
+              <div id="materialListPanel" class="material-list-panel" hidden>
+                <div class="material-list-header">
+                  <span id="materialListTitle">截图</span>
+                  <button id="materialManageBtn" class="btn-danger-sm">管理/删除</button>
+                </div>
+                <div id="materialListItems" class="material-list-items"></div>
+              </div>
             </section>
 
             <!-- 截图大图查看器 -->
@@ -99,6 +104,21 @@
                 <img id="viewerImg" class="viewer-img" alt="截图" />
                 <button class="viewer-nav viewer-next" id="viewerNext">&#8250;</button>
                 <div class="viewer-info" id="viewerInfo"></div>
+                <div class="viewer-path" id="viewerPath"></div>
+              </div>
+            </div>
+
+            <!-- 媒体播放器弹窗 -->
+            <div id="mediaPlayerOverlay" class="settings-overlay" hidden>
+              <div class="settings-card media-player-card">
+                <div class="settings-header">
+                  <h2 id="mediaPlayerTitle">▶ 播放</h2>
+                  <button id="mediaPlayerClose" class="settings-close-btn">&times;</button>
+                </div>
+                <div class="media-player-body" id="mediaPlayerBody">
+                  <div class="media-loading" id="mediaLoading">加载中...</div>
+                </div>
+                <div class="media-player-path" id="mediaPlayerPath"></div>
               </div>
             </div>
 
@@ -195,6 +215,8 @@
 
           <div class="login-footer">
             <a class="login-register-link" id="goRegister">注册新账号</a>
+            <span class="login-footer-sep">|</span>
+            <a class="login-register-link" id="skipLogin">跳过登录</a>
           </div>
 
           <div class="login-divider"><span>其他登录方式</span></div>
@@ -216,6 +238,7 @@
           <div class="login-tabs">
             <button class="login-tab active" data-rtab="email">邮箱注册</button>
             <button class="login-tab" data-rtab="phone">手机注册</button>
+            <button class="login-tab" data-rtab="username">用户名注册</button>
           </div>
 
           <!-- 邮箱注册 -->
@@ -262,6 +285,22 @@
               <button class="password-toggle" type="button" title="显示/隐藏密码">&#128065;</button>
             </div>
             <button id="registerPhoneBtn" class="login-submit">注 册</button>
+          </div>
+
+          <!-- 用户名注册 -->
+          <div id="registerFormUsername" class="login-form-panel" hidden>
+            <div class="login-input-group">
+              <input id="regUsername" type="text" placeholder="用户名（2-20位字母/数字/下划线）" />
+            </div>
+            <div class="login-input-group password-group">
+              <input id="regUsernamePassword" type="password" placeholder="设置密码（6-20位）" />
+              <button class="password-toggle" type="button" title="显示/隐藏密码">&#128065;</button>
+            </div>
+            <div class="login-input-group password-group">
+              <input id="regUsernamePasswordConfirm" type="password" placeholder="确认密码" />
+              <button class="password-toggle" type="button" title="显示/隐藏密码">&#128065;</button>
+            </div>
+            <button id="registerUsernameBtn" class="login-submit">注 册</button>
           </div>
 
           <div class="login-footer">
@@ -366,6 +405,143 @@
       <div class="code-toast-title">📩 验证码</div>
       <div class="code-toast-code" id="codeToastValue"></div>
       <div class="code-toast-hint">开发模式：SMTP/短信未配置，验证码直接显示</div>
+    </div>
+
+    <!-- 素材管理弹窗（浏览+分页+全选/单选删除） -->
+    <div id="materialManageOverlay" class="settings-overlay" hidden>
+      <div class="settings-card material-manage-card">
+        <div class="settings-header">
+          <h2 id="materialManageTitle">🗑 管理截图</h2>
+          <button id="materialManageClose" class="settings-close-btn">&times;</button>
+        </div>
+        <div class="material-manage-grid" id="materialManageGrid"></div>
+        <div class="material-manage-footer">
+          <div class="manage-footer-left">
+            <label class="select-all-label"><input type="checkbox" id="materialSelectAll" /> 全选</label>
+            <button id="materialDeleteBtn" class="btn-footer-danger" disabled>删除选中</button>
+            <button id="materialDeleteAllBtn" class="btn-footer-danger">全部删除</button>
+            <span class="manage-selected-inline" id="materialSelectedCount">已选 0 项</span>
+            <span class="manage-page-info" id="managePageInfo">共 0 项</span>
+          </div>
+          <div class="manage-footer-right">
+            <select id="managePageSize" class="manage-page-size">
+              <option value="10">10条/页</option>
+              <option value="20" selected>20条/页</option>
+              <option value="50">50条/页</option>
+            </select>
+            <button id="managePrevPage" class="manage-page-btn" disabled>&lt;</button>
+            <span id="managePageNum" class="manage-page-num">1/1</span>
+            <button id="manageNextPage" class="manage-page-btn" disabled>&gt;</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 用户个人中心 -->
+    <div id="profileOverlay" class="settings-overlay" hidden>
+      <div class="settings-card profile-card">
+        <div class="settings-header">
+          <h2>👤 个人中心</h2>
+          <button id="profileClose" class="settings-close-btn">&times;</button>
+        </div>
+        <div class="settings-body">
+          <div class="profile-avatar-row">
+            <div class="profile-avatar" id="profileAvatar">游</div>
+            <div class="profile-info-col">
+              <div class="profile-name" id="profileName">游客</div>
+              <button id="changeAvatarBtn" class="btn-change-avatar">更换头像</button>
+            </div>
+          </div>
+          <!-- 头像选择区域 -->
+          <div id="avatarPicker" class="avatar-picker" hidden>
+            <div class="avatar-picker-title">选择系统头像</div>
+            <div class="avatar-grid" id="avatarGrid"></div>
+            <div class="avatar-upload-row">
+              <button id="avatarUploadBtn" class="btn-upload-avatar">📁 上传自定义图片</button>
+              <input type="file" id="avatarFileInput" accept="image/*" hidden />
+            </div>
+          </div>
+          <div class="settings-group">
+            <label class="settings-label">用户名</label>
+            <input id="profileUsername" type="text" class="settings-input" readonly />
+          </div>
+          <div class="settings-group">
+            <label class="settings-label">邮箱</label>
+            <input id="profileEmail" type="text" class="settings-input" placeholder="未绑定" readonly />
+          </div>
+          <div class="settings-group">
+            <label class="settings-label">手机号</label>
+            <input id="profilePhone" type="text" class="settings-input" placeholder="未绑定" readonly />
+          </div>
+          <div class="settings-group">
+            <label class="settings-label">OpenAI API Key</label>
+            <input id="profileApiKey" type="password" class="settings-input" placeholder="sk-..." />
+          </div>
+          <button id="profileSaveKey" class="login-submit">保存</button>
+          <button id="avatarManageBtn" class="login-submit" style="background:#607d8b;margin-top:8px;">🗃 管理头像</button>
+          <button id="logoutBtn" class="btn-logout">退出登录</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 会议管理弹窗 -->
+    <div id="sessionManageOverlay" class="settings-overlay" hidden>
+      <div class="settings-card material-manage-card">
+        <div class="settings-header">
+          <h2>🗃 会议管理</h2>
+          <button id="sessionManageClose" class="settings-close-btn">&times;</button>
+        </div>
+        <div class="material-manage-grid" id="sessionManageGrid"></div>
+        <div class="material-manage-footer">
+          <div class="manage-footer-left">
+            <label class="select-all-label"><input type="checkbox" id="sessionSelectAll" /> 全选</label>
+            <button id="sessionDeleteBtn" class="btn-footer-danger" disabled>删除选中</button>
+            <button id="sessionDeleteAllBtn" class="btn-footer-danger">全部删除</button>
+            <span class="manage-selected-inline" id="sessionSelectedCount">已选 0 项</span>
+            <span class="manage-page-info" id="sessionPageInfo">共 0 项</span>
+          </div>
+          <div class="manage-footer-right">
+            <select id="sessionPageSize" class="manage-page-size">
+              <option value="10">10条/页</option>
+              <option value="20" selected>20条/页</option>
+              <option value="50">50条/页</option>
+            </select>
+            <button id="sessionPrevPage" class="manage-page-btn" disabled>&lt;</button>
+            <span id="sessionPageNum" class="manage-page-num">1/1</span>
+            <button id="sessionNextPage" class="manage-page-btn" disabled>&gt;</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 头像管理弹窗 -->
+    <div id="avatarManageOverlay" class="settings-overlay" hidden>
+      <div class="settings-card material-manage-card">
+        <div class="settings-header">
+          <h2>🗃 头像管理</h2>
+          <button id="avatarManageClose" class="settings-close-btn">&times;</button>
+        </div>
+        <div class="material-manage-grid" id="avatarManageGrid"></div>
+        <div class="material-manage-footer">
+          <div class="manage-footer-left">
+            <label class="select-all-label"><input type="checkbox" id="avatarSelectAll" /> 全选</label>
+            <button id="avatarDeleteBtn" class="btn-footer-danger" disabled>删除选中</button>
+            <button id="avatarDeleteAllBtn" class="btn-footer-danger">全部删除</button>
+            <span class="manage-selected-inline" id="avatarSelectedCount">已选 0 项</span>
+            <span class="manage-page-info" id="avatarPageInfo">共 0 项</span>
+          </div>
+          <div class="manage-footer-right">
+            <select id="avatarPageSize" class="manage-page-size">
+              <option value="10">10条/页</option>
+              <option value="20" selected>20条/页</option>
+              <option value="50">50条/页</option>
+            </select>
+            <button id="avatarPrevPage" class="manage-page-btn" disabled>&lt;</button>
+            <span id="avatarPageNum" class="manage-page-num">1/1</span>
+            <button id="avatarNextPage" class="manage-page-btn" disabled>&gt;</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <script type="module" src="./main.js"></script>

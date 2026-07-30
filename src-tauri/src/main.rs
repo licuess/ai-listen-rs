@@ -297,6 +297,25 @@ fn load_image_as_data_url(path: String) -> Result<String, String> {
     Ok(format!("data:{mime};base64,{}", base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &data)))
 }
 
+/// 将媒体文件（视频/音频）读取为 base64 data URL，用于前端播放
+#[tauri::command]
+fn load_media_as_data_url(path: String) -> Result<String, String> {
+    let data = std::fs::read(&path).map_err(|e| format!("读取文件失败: {e}"))?;
+    let ext = path.rsplit('.').next().unwrap_or("").to_lowercase();
+    let mime = match ext.as_str() {
+        "mp4" => "video/mp4",
+        "mov" => "video/quicktime",
+        "mkv" => "video/x-matroska",
+        "webm" => "video/webm",
+        "wav" => "audio/wav",
+        "mp3" => "audio/mpeg",
+        "m4a" => "audio/mp4",
+        "ogg" => "audio/ogg",
+        _ => "application/octet-stream",
+    };
+    Ok(format!("data:{mime};base64,{}", base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &data)))
+}
+
 // ========== 认证相关命令 ==========
 
 #[tauri::command]
@@ -348,49 +367,144 @@ fn register_phone(phone: String, password: String, code: String) -> Result<AuthR
 
 #[tauri::command]
 fn register_username(username: String, password: String) -> Result<AuthResult, String> {
-    match users::register_username(&username, &password) {
-        Ok(user) => Ok(AuthResult {
-            success: true,
-            message: "注册成功".to_string(),
-            user: Some(user),
-        }),
-        Err(e) => Ok(AuthResult {
-            success: false,
-            message: e,
-            user: None,
-        }),
+    let result = std::panic::catch_unwind(|| {
+        users::register_username(&username, &password)
+    });
+    match result {
+        Ok(Ok(user)) => Ok(AuthResult { success: true, message: "注册成功".to_string(), user: Some(user) }),
+        Ok(Err(e)) => Ok(AuthResult { success: false, message: e, user: None }),
+        Err(_) => Ok(AuthResult { success: false, message: "服务器内部错误".to_string(), user: None }),
     }
 }
 
 #[tauri::command]
 fn login_email(email: String, password: String) -> AuthResult {
-    users::login_email(&email, &password)
+    std::panic::catch_unwind(|| users::login_email(&email, &password))
+        .unwrap_or_else(|_| AuthResult { success: false, message: "服务器内部错误".to_string(), user: None })
 }
 
 #[tauri::command]
 fn login_phone(phone: String, password: String) -> AuthResult {
-    users::login_phone(&phone, &password)
+    std::panic::catch_unwind(|| users::login_phone(&phone, &password))
+        .unwrap_or_else(|_| AuthResult { success: false, message: "服务器内部错误".to_string(), user: None })
 }
 
 #[tauri::command]
 fn login_phone_code(phone: String, code: String) -> Result<AuthResult, String> {
-    match users::login_phone_code(&phone, &code) {
-        Ok(user) => Ok(AuthResult {
-            success: true,
-            message: "登录成功".to_string(),
-            user: Some(user),
-        }),
-        Err(e) => Ok(AuthResult {
-            success: false,
-            message: e,
-            user: None,
-        }),
+    let result = std::panic::catch_unwind(|| users::login_phone_code(&phone, &code));
+    match result {
+        Ok(Ok(user)) => Ok(AuthResult { success: true, message: "登录成功".to_string(), user: Some(user) }),
+        Ok(Err(e)) => Ok(AuthResult { success: false, message: e, user: None }),
+        Err(_) => Ok(AuthResult { success: false, message: "服务器内部错误".to_string(), user: None }),
     }
 }
 
 #[tauri::command]
 fn login_username(identifier: String, password: String) -> AuthResult {
-    users::login_username(&identifier, &password)
+    std::panic::catch_unwind(|| users::login_username(&identifier, &password))
+        .unwrap_or_else(|_| AuthResult { success: false, message: "服务器内部错误".to_string(), user: None })
+}
+
+/// 更新用户个人信息
+#[tauri::command]
+fn update_profile(
+    user_id: String,
+    username: Option<String>,
+    email: Option<String>,
+    phone: Option<String>,
+    avatar: Option<String>,
+) -> Result<users::User, String> {
+    std::panic::catch_unwind(|| {
+        users::update_profile(
+            &user_id,
+            username.as_deref(),
+            email.as_deref(),
+            phone.as_deref(),
+            avatar.as_deref(),
+        )
+    })
+    .unwrap_or_else(|e| {
+        let msg = if let Some(s) = e.downcast_ref::<&str>() { s.to_string() }
+                  else if let Some(s) = e.downcast_ref::<String>() { s.clone() }
+                  else { "未知内部错误".to_string() };
+        Err(format!("服务器内部错误: {}", msg))
+    })
+}
+
+/// 上传头像（接收 base64 图片数据）
+#[tauri::command]
+fn upload_avatar_cmd(user_id: String, data_base64: String, file_name: String) -> Result<users::UserAvatar, String> {
+    use base64::Engine;
+    let data = base64::engine::general_purpose::STANDARD
+        .decode(&data_base64)
+        .map_err(|e| format!("解码图片失败: {}", e))?;
+    std::panic::catch_unwind(|| users::upload_avatar(&user_id, &data, &file_name))
+        .unwrap_or_else(|e| {
+            let msg = if let Some(s) = e.downcast_ref::<&str>() { s.to_string() }
+                      else if let Some(s) = e.downcast_ref::<String>() { s.clone() }
+                      else { "未知内部错误".to_string() };
+            Err(format!("服务器内部错误: {}", msg))
+        })
+}
+
+/// 设置用户头像（选择已有头像/系统头像）
+#[tauri::command]
+fn set_avatar_cmd(user_id: String, avatar_path: String) -> Result<users::User, String> {
+    users::set_user_avatar(&user_id, &avatar_path)
+}
+
+/// 记录系统表情头像到 user_avatars 表
+#[tauri::command]
+fn record_system_avatar_cmd(user_id: String, emoji_json: String) -> Result<users::UserAvatar, String> {
+    std::panic::catch_unwind(|| users::record_system_avatar(&user_id, &emoji_json))
+        .unwrap_or_else(|e| {
+            let msg = if let Some(s) = e.downcast_ref::<&str>() { s.to_string() }
+                      else if let Some(s) = e.downcast_ref::<String>() { s.clone() }
+                      else { "未知内部错误".to_string() };
+            Err(format!("服务器内部错误: {}", msg))
+        })
+}
+
+/// 记录自定义上传头像到 user_avatars 表（与系统头像相同的 JSON 格式）
+#[tauri::command]
+fn record_custom_avatar_cmd(user_id: String, avatar_json: String) -> Result<users::UserAvatar, String> {
+    std::panic::catch_unwind(|| users::record_custom_avatar(&user_id, &avatar_json))
+        .unwrap_or_else(|e| {
+            let msg = if let Some(s) = e.downcast_ref::<&str>() { s.to_string() }
+                      else if let Some(s) = e.downcast_ref::<String>() { s.clone() }
+                      else { "未知内部错误".to_string() };
+            Err(format!("服务器内部错误: {}", msg))
+        })
+}
+
+/// 获取用户头像列表
+#[tauri::command]
+fn list_avatars_cmd(user_id: String) -> Result<Vec<users::UserAvatar>, String> {
+    users::list_user_avatars(&user_id)
+}
+
+/// 批量删除头像记录
+#[tauri::command]
+fn delete_avatars_cmd(user_id: String, avatar_ids: Vec<String>) -> Result<u64, String> {
+    std::panic::catch_unwind(|| users::delete_avatar_records(&user_id, &avatar_ids))
+        .unwrap_or_else(|e| {
+            let msg = if let Some(s) = e.downcast_ref::<&str>() { s.to_string() }
+                      else if let Some(s) = e.downcast_ref::<String>() { s.clone() }
+                      else { "未知内部错误".to_string() };
+            Err(format!("服务器内部错误: {}", msg))
+        })
+}
+
+/// 应用头像记录为当前头像（更新 users.avatar + localStorage）
+#[tauri::command]
+fn apply_avatar_cmd(user_id: String, avatar_json: String) -> Result<users::User, String> {
+    std::panic::catch_unwind(|| users::apply_avatar_record(&user_id, &avatar_json))
+        .unwrap_or_else(|e| {
+            let msg = if let Some(s) = e.downcast_ref::<&str>() { s.to_string() }
+                      else if let Some(s) = e.downcast_ref::<String>() { s.clone() }
+                      else { "未知内部错误".to_string() };
+            Err(format!("服务器内部错误: {}", msg))
+        })
 }
 
 /// 获取第三方 OAuth 授权 URL
@@ -477,9 +591,56 @@ fn social_login(provider: String) -> Result<OAuthResult, String> {
     oauth::social_login_or_register(&provider)
 }
 
+/// 删除单个截图
+#[tauri::command]
+fn delete_screenshot(slug: String, path: String) -> Result<SessionDetails, String> {
+    let session = store().delete_screenshot(&slug, &path)?;
+    refresh_index();
+    Ok(session)
+}
+
+/// 删除所有截图
+#[tauri::command]
+fn delete_all_screenshots(slug: String) -> Result<SessionDetails, String> {
+    let session = store().delete_all_screenshots(&slug)?;
+    refresh_index();
+    Ok(session)
+}
+
+/// 通用素材文件删除（截图/录屏/音频/转写）
+#[tauri::command]
+fn delete_material_file(slug: String, path: String) -> Result<SessionDetails, String> {
+    let session = store().delete_screenshot(&slug, &path)?;
+    refresh_index();
+    Ok(session)
+}
+
+/// 删除指定类型的所有素材文件
+#[tauri::command]
+fn delete_all_material_cmd(slug: String, material_type: String) -> Result<SessionDetails, String> {
+    let session = store().delete_all_material(&slug, &material_type)?;
+    refresh_index();
+    Ok(session)
+}
+
+/// 删除整个会议（批量）
+#[tauri::command]
+fn delete_sessions_cmd(slugs: Vec<String>) -> Result<u64, String> {
+    let mut deleted = 0u64;
+    for slug in &slugs {
+        store().delete_session(slug)?;
+        deleted += 1;
+    }
+    refresh_index();
+    Ok(deleted)
+}
+
 fn main() {
     // 加载 .env 环境变量配置
     let _ = dotenv::dotenv();
+
+    // 启动时初始化数据库连接池（自动创建表结构）
+    users::init_db_pool();
 
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
@@ -509,6 +670,7 @@ fn main() {
             save_settings_cmd,
             get_token_report,
             load_image_as_data_url,
+            load_media_as_data_url,
             send_email_code,
             send_phone_code,
             verify_code,
@@ -519,9 +681,22 @@ fn main() {
             login_phone,
             login_phone_code,
             login_username,
+            update_profile,
+            upload_avatar_cmd,
+            set_avatar_cmd,
+            record_system_avatar_cmd,
+            record_custom_avatar_cmd,
+            list_avatars_cmd,
+            delete_avatars_cmd,
+            apply_avatar_cmd,
             get_social_auth_url,
             open_url,
-            social_login
+            social_login,
+            delete_screenshot,
+            delete_all_screenshots,
+            delete_material_file,
+            delete_all_material_cmd,
+            delete_sessions_cmd
         ])
         .run(tauri::generate_context!())
         .expect("failed to run AI Listen RS");

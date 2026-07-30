@@ -159,6 +159,58 @@ impl SessionStore {
             Err(format!("session not found: {slug}"))
         }
     }
+
+    /// 删除单个截图文件
+    pub fn delete_screenshot(&self, slug: &str, path: &str) -> Result<SessionDetails, String> {
+        let session_dir = self.session_dir_by_slug(slug)?;
+        let file = std::path::Path::new(path);
+        // 安全检查：确保文件在会话目录内
+        if !file.starts_with(&session_dir) {
+            return Err("无权删除该文件".to_string());
+        }
+        if file.exists() {
+            fs::remove_file(file).map_err(|e| format!("删除失败: {}", e))?;
+        }
+        self.read_session(slug)
+    }
+
+    /// 删除所有截图
+    pub fn delete_all_screenshots(&self, slug: &str) -> Result<SessionDetails, String> {
+        let session_dir = self.session_dir_by_slug(slug)?;
+        for entry in fs::read_dir(&session_dir).map_err(|e| e.to_string())? {
+            let path = entry.map_err(|e| e.to_string())?.path();
+            if path.extension().and_then(|e| e.to_str()) == Some("png") {
+                let _ = fs::remove_file(&path);
+            }
+        }
+        self.read_session(slug)
+    }
+
+    /// 删除指定类型的所有素材文件（截图/录屏/音频/转写）
+    pub fn delete_all_material(&self, slug: &str, material_type: &str) -> Result<SessionDetails, String> {
+        let session_dir = self.session_dir_by_slug(slug)?;
+        for entry in fs::read_dir(&session_dir).map_err(|e| e.to_string())? {
+            let path = entry.map_err(|e| e.to_string())?.path();
+            let Some(name) = path.file_name().and_then(|v| v.to_str()) else { continue };
+            let matches = match material_type {
+                "screenshots" => name.ends_with(".png"),
+                "recordings" => name.ends_with(".mp4") || name.ends_with(".mov") || name.ends_with(".mkv"),
+                "audio" => name.ends_with(".wav") || name.ends_with(".mp3") || name.ends_with(".m4a"),
+                "transcripts" => name.starts_with("transcript-") && name.ends_with(".md"),
+                _ => false,
+            };
+            if matches {
+                let _ = fs::remove_file(&path);
+            }
+        }
+        self.read_session(slug)
+    }
+
+    /// 删除整个会议（删除会话目录及其所有文件）
+    pub fn delete_session(&self, slug: &str) -> Result<(), String> {
+        let session_dir = self.session_dir_by_slug(slug)?;
+        fs::remove_dir_all(&session_dir).map_err(|e| format!("删除会议失败: {}", e))
+    }
 }
 
 fn timestamp() -> String {

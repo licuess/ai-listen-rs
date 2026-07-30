@@ -1,8 +1,13 @@
 use std::fs;
 use std::path::Path;
-use std::process::{Command, Stdio};
+use std::process::{Command, Stdio, ChildStdin};
+use std::sync::Mutex;
+use std::sync::LazyLock;
 
 use serde::Serialize;
+
+// 保存当前录音进程的 stdin 管道（用于优雅停止）
+static AUDIO_STDIN: LazyLock<Mutex<Option<ChildStdin>>> = LazyLock::new(|| Mutex::new(None));
 
 #[derive(Debug, Clone, Serialize)]
 pub struct AudioDevice {
@@ -39,12 +44,35 @@ pub fn start_audio_recording(
 ) -> Result<(), String> {
     let mut command = audio_command(output, device_id, None);
 
-    let child = command
-        .stdin(Stdio::null())
+    let mut child = command
+        .stdin(Stdio::piped())
         .stdout(Stdio::null())
-        .stderr(Stdio::null())
+        .stderr(Stdio::piped())
         .spawn()
-        .map_err(|error| format!("failed to start audio recording: {error}"))?;
+        .map_err(|error| format!("启动录音失败: {error}"))?;
+
+    // 保存 stdin 管道用于后续优雅停止
+    if let Some(stdin) = child.stdin.take() {
+        *AUDIO_STDIN.lock().unwrap() = Some(stdin);
+    }
+
+    // 等待短暂时间检查进程是否立即退出（设备不可用时会立即失败）
+    std::thread::sleep(std::time::Duration::from_millis(600));
+    match child.try_wait() {
+        Ok(Some(status)) => {
+            // 进程已退出，读取错误信息
+            let mut err_msg = String::new();
+            if let Some(mut stderr) = child.stderr.take() {
+                use std::io::Read;
+                let _ = stderr.read_to_string(&mut err_msg);
+            }
+            return Err(format!("录音启动失败 ({}): {}", status, 
+                if err_msg.is_empty() { "设备可能不可用".to_string() } 
+                else { err_msg.lines().rev().take(3).collect::<Vec<_>>().join(" ") }));
+        }
+        Ok(None) => { /* 进程仍在运行，正常 */ }
+        Err(e) => return Err(format!("检查录音进程失败: {e}")),
+    }
 
     fs::write(pid_file, child.id().to_string()).map_err(|error| error.to_string())?;
     Ok(())
@@ -88,10 +116,16 @@ fn audio_command(output: &Path, device_id: Option<&str>, duration: Option<&str>)
     let mut command = Command::new("ffmpeg");
 
     if cfg!(target_os = "windows") {
-        let input = device_id
-            .filter(|value| !value.trim().is_empty())
-            .map(|value| format!("audio={value}"))
-            .unwrap_or_else(|| "audio=default".to_string());
+        // 如果指定了设备名，直接使用；否则自动获取第一个音频设备
+        let input = if let Some(id) = device_id.filter(|v| !v.trim().is_empty()) {
+            format!("audio={id}")
+        } else {
+            // 自动获取默认音频设备名
+            match get_first_audio_device() {
+                Some(name) => format!("audio={name}"),
+                None => "audio=Microphone".to_string(),
+            }
+        };
         command.args(["-y", "-f", "dshow", "-i", &input]);
     } else if cfg!(target_os = "macos") {
         let input = device_id
@@ -112,6 +146,24 @@ fn audio_command(output: &Path, device_id: Option<&str>, duration: Option<&str>)
     command.arg(output);
 
     command
+}
+
+/// 获取第一个可用音频设备名称（Windows）
+fn get_first_audio_device() -> Option<String> {
+    let output = Command::new("ffmpeg")
+        .args(["-hide_banner", "-list_devices", "true", "-f", "dshow", "-i", "dummy"])
+        .output()
+        .ok()?;
+    let text = String::from_utf8_lossy(&output.stderr);
+    for line in text.lines() {
+        if !line.contains("(audio)") {
+            continue;
+        }
+        if let Some(name) = quoted_value(line) {
+            return Some(name);
+        }
+    }
+    None
 }
 
 fn analyze_audio_level(path: &Path) -> (Option<f32>, Option<f32>) {
@@ -279,15 +331,28 @@ fn bracket_device(line: &str) -> Option<(String, String)> {
 
 pub fn stop_audio_recording(pid_file: &Path) -> Result<(), String> {
     let pid = fs::read_to_string(pid_file)
-        .map_err(|_| "no active audio recording pid file found".to_string())?
+        .map_err(|_| "没有正在进行的录音".to_string())?
         .trim()
         .to_string();
 
     // 先清理 PID 文件
     let _ = fs::remove_file(pid_file);
 
+    // 尝试通过 stdin 发送 "q" 优雅停止 ffmpeg
+    {
+        use std::io::Write;
+        let mut stdin_lock = AUDIO_STDIN.lock().unwrap();
+        if let Some(mut stdin) = stdin_lock.take() {
+            let _ = stdin.write_all(b"q\r\n");
+            let _ = stdin.flush();
+        }
+    }
+
+    // 等待 ffmpeg 自行退出
+    std::thread::sleep(std::time::Duration::from_millis(800));
+
+    // 如果仍然在运行，强制结束
     if cfg!(target_os = "windows") {
-        // taskkill 失败不报错（进程可能已退出）
         let _ = Command::new("taskkill")
             .args(["/PID", &pid, "/T", "/F"])
             .stdin(Stdio::null())
