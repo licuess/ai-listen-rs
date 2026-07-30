@@ -1220,3 +1220,47 @@ pre,
 .slider-captcha-close:hover {
   color: #17201d;
 }
+
+/* ========== 验证码 Toast ========== */
+.code-toast {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #fff;
+  border: 2px solid #2e7d5b;
+  border-radius: 12px;
+  padding: 16px 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  z-index: 20000;
+  text-align: center;
+  animation: toastSlideIn 0.3s ease;
+}
+
+.code-toast[hidden] {
+  display: none !important;
+}
+
+@keyframes toastSlideIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.code-toast-title {
+  font-size: 14px;
+  color: #53615c;
+  margin-bottom: 8px;
+}
+
+.code-toast-code {
+  font-size: 28px;
+  font-weight: 700;
+  color: #2e7d5b;
+  letter-spacing: 6px;
+  margin-bottom: 8px;
+}
+
+.code-toast-hint {
+  font-size: 12px;
+  color: #8a9690;
+}

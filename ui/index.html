@@ -138,6 +138,7 @@
           <div class="login-tabs">
             <button class="login-tab active" data-tab="email">邮箱</button>
             <button class="login-tab" data-tab="phone">手机号</button>
+            <button class="login-tab" data-tab="username">用户名</button>
           </div>
 
           <!-- 邮箱登录 -->
@@ -178,6 +179,18 @@
               <button id="loginPhoneSendCode" class="login-code-btn">发送验证码</button>
             </div>
             <button id="loginPhoneBtn" class="login-submit">登 录</button>
+          </div>
+
+          <!-- 用户名登录 -->
+          <div id="loginFormUsername" class="login-form-panel" hidden>
+            <div class="login-input-group">
+              <input id="loginUsername" type="text" placeholder="用户名或手机号" />
+            </div>
+            <div class="login-input-group password-group">
+              <input id="loginUsernamePassword" type="password" placeholder="输入密码" />
+              <button class="password-toggle" type="button" title="显示/隐藏密码">&#128065;</button>
+            </div>
+            <button id="loginUsernameBtn" class="login-submit">登 录</button>
           </div>
 
           <div class="login-footer">
@@ -346,6 +359,13 @@
           <div class="slider-captcha-thumb" id="captchaThumb">&rarr;</div>
         </div>
       </div>
+    </div>
+
+    <!-- 验证码提示 Toast -->
+    <div id="codeToast" class="code-toast" hidden>
+      <div class="code-toast-title">📩 验证码</div>
+      <div class="code-toast-code" id="codeToastValue"></div>
+      <div class="code-toast-hint">开发模式：SMTP/短信未配置，验证码直接显示</div>
     </div>
 
     <script type="module" src="./main.js"></script>

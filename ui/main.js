@@ -52,6 +52,7 @@ const els = {
   registerTabs: document.querySelectorAll("#registerMode .login-tab"),
   loginFormEmail: document.querySelector("#loginFormEmail"),
   loginFormPhone: document.querySelector("#loginFormPhone"),
+  loginFormUsername: document.querySelector("#loginFormUsername"),
   registerFormEmail: document.querySelector("#registerFormEmail"),
   registerFormPhone: document.querySelector("#registerFormPhone"),
   loginEmailProvider: document.querySelector("#loginEmailProvider"),
@@ -62,6 +63,9 @@ const els = {
   loginPhoneCode: document.querySelector("#loginPhoneCode"),
   loginPhoneSendCode: document.querySelector("#loginPhoneSendCode"),
   loginPhoneBtn: document.querySelector("#loginPhoneBtn"),
+  loginUsername: document.querySelector("#loginUsername"),
+  loginUsernamePassword: document.querySelector("#loginUsernamePassword"),
+  loginUsernameBtn: document.querySelector("#loginUsernameBtn"),
   goRegister: document.querySelector("#goRegister"),
   goLogin: document.querySelector("#goLogin"),
   regEmail: document.querySelector("#regEmail"),
@@ -104,7 +108,10 @@ const els = {
   captchaTrack: document.querySelector("#captchaTrack"),
   captchaTrackText: document.querySelector("#captchaTrackText"),
   captchaThumb: document.querySelector("#captchaThumb"),
-  captchaFill: document.querySelector("#captchaFill")
+  captchaFill: document.querySelector("#captchaFill"),
+  // 验证码 Toast
+  codeToast: document.querySelector("#codeToast"),
+  codeToastValue: document.querySelector("#codeToastValue")
 };
 
 els.newSession.addEventListener("click", createSession);
@@ -170,6 +177,7 @@ els.loginTabs.forEach((tab) => {
     const target = tab.dataset.tab;
     els.loginFormEmail.hidden = target !== "email";
     els.loginFormPhone.hidden = target !== "phone";
+    els.loginFormUsername.hidden = target !== "username";
   });
 });
 
@@ -268,7 +276,7 @@ els.loginPhoneSendCode.addEventListener("click", async () => {
   setStatus("正在发送验证码...");
   try {
     const result = await invoke("send_phone_code", { phone });
-    setStatus(result);
+    showCodeToast(result);
     els.loginPhoneSendCode.disabled = true;
     let countdown = 60;
     els.loginPhoneSendCode.textContent = `${countdown}s`;
@@ -283,6 +291,28 @@ els.loginPhoneSendCode.addEventListener("click", async () => {
   } catch (error) {
     setStatus(String(error));
   }
+});
+
+els.loginUsernameBtn.addEventListener("click", async () => {
+  const username = els.loginUsername.value.trim();
+  const password = els.loginUsernamePassword.value;
+  if (!username || !password) { setStatus("请填写用户名和密码"); return; }
+
+  // 显示滑块验证码
+  showSliderCaptcha(async (success) => {
+    if (!success) return;
+    setStatus("正在登录...");
+    try {
+      const result = await invoke("login_username", { identifier: username, password });
+      if (result.success) {
+        doLogin("username", { username, user: result.user });
+      } else {
+        setStatus(result.message);
+      }
+    } catch (error) {
+      setStatus("登录失败：" + String(error));
+    }
+  });
 });
 
 document.querySelectorAll(".social-btn").forEach((btn) => {
@@ -320,7 +350,7 @@ els.regEmailSendCode.addEventListener("click", async () => {
   setStatus("正在发送验证码...");
   try {
     const result = await invoke("send_email_code", { email });
-    setStatus(result);
+    showCodeToast(result);
     els.regEmailSendCode.disabled = true;
     let countdown = 60;
     els.regEmailSendCode.textContent = `${countdown}s`;
@@ -377,7 +407,7 @@ els.regPhoneSendCode.addEventListener("click", async () => {
   setStatus("正在发送验证码...");
   try {
     const result = await invoke("send_phone_code", { phone });
-    setStatus(result);
+    showCodeToast(result);
     els.regPhoneSendCode.disabled = true;
     let countdown = 60;
     els.regPhoneSendCode.textContent = `${countdown}s`;
@@ -933,6 +963,20 @@ function renderEmpty() {
 
 function setStatus(text) {
   els.statusText.textContent = text;
+}
+
+// 验证码 Toast 提示（开发模式下显示验证码）
+let codeToastTimer = null;
+function showCodeToast(message) {
+  // 从后端返回的消息中提取验证码
+  const match = message.match(/验证码：(\d{6})/);
+  if (match) {
+    els.codeToastValue.textContent = match[1];
+    els.codeToast.hidden = false;
+    clearTimeout(codeToastTimer);
+    codeToastTimer = setTimeout(() => { els.codeToast.hidden = true; }, 30000);
+  }
+  setStatus(message);
 }
 
 // ========== 滑块验证码 ==========
