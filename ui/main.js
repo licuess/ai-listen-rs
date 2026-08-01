@@ -185,7 +185,20 @@ const els = {
   avatarPicker: document.querySelector("#avatarPicker"),
   avatarGrid: document.querySelector("#avatarGrid"),
   avatarUploadBtn: document.querySelector("#avatarUploadBtn"),
-  avatarFileInput: document.querySelector("#avatarFileInput")
+  avatarFileInput: document.querySelector("#avatarFileInput"),
+  // AI 聊天首页
+  chatHome: document.querySelector("#chatHome"),
+  workView: document.querySelector("#workView"),
+  chatInput: document.querySelector("#chatInput"),
+  chatSendBtn: document.querySelector("#chatSendBtn"),
+  chatModeBtn: document.querySelector("#chatModeBtn"),
+  backToHomeBtn: document.querySelector("#backToHomeBtn"),
+  chatQuickActions: document.querySelector(".chat-quick-actions"),
+  // 侧边栏菜单
+  sidebarMenuBtn: document.querySelector("#sidebarMenuBtn"),
+  sidebarMenu: document.querySelector("#sidebarMenu"),
+  sidebarAvatar: document.querySelector("#sidebarAvatar"),
+  sidebarUsername: document.querySelector("#sidebarUsername")
 };
 
 els.newSession.addEventListener("click", createSession);
@@ -199,10 +212,123 @@ els.screenshotButton.addEventListener("click", captureScreenshot);
 els.analyzeButton.addEventListener("click", analyzeScreenshot);
 els.recordButton.addEventListener("click", toggleRecording);
 els.audioButton.addEventListener("click", toggleAudio);
-els.audioTestButton.addEventListener("click", testAudioDevice);
+els.audioTestButton?.addEventListener("click", testAudioDevice);
 els.transcribeButton.addEventListener("click", transcribeLatestAudio);
 els.summaryButton.addEventListener("click", summarize);
 els.indexButton.addEventListener("click", rebuildIndex);
+
+// === AI 聊天首页视图切换 ===
+function showChatHome() {
+  els.chatHome.hidden = false;
+  els.workView.hidden = true;
+}
+function showWorkView() {
+  els.chatHome.hidden = true;
+  els.workView.hidden = false;
+}
+els.backToHomeBtn.addEventListener("click", showChatHome);
+
+// 快捷操作按钮
+els.chatQuickActions.addEventListener("click", (e) => {
+  const btn = e.target.closest(".chat-action-btn");
+  if (!btn) return;
+  const action = btn.dataset.action;
+  if (!activeSlug) {
+    setStatus("请先选择或新建一个会议");
+    return;
+  }
+  showWorkView();
+  switch (action) {
+    case "screenshot": captureScreenshot(); break;
+    case "audio": startRecordingPanel(); break;
+    case "record": toggleRecording(); break;
+    case "minutes": summarize(); break;
+    case "recognize": analyzeScreenshot(); break;
+    case "transcribe": transcribeLatestAudio(); break;
+    case "summary": summarize(); break;
+    case "index": rebuildIndex(); break;
+    case "import": els.exportMenu.hidden = !els.exportMenu.hidden; break;
+  }
+});
+
+// 聊天输入框发送
+els.chatSendBtn.addEventListener("click", () => {
+  const text = els.chatInput.value.trim();
+  if (!text) return;
+  if (!activeSlug) {
+    setStatus("请先选择或新建一个会议");
+    return;
+  }
+  showWorkView();
+  els.noteEditor.value += (els.noteEditor.value ? "\n" : "") + text;
+  els.chatInput.value = "";
+  saveCurrentNote();
+});
+els.chatInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    els.chatSendBtn.click();
+  }
+});
+// === 侧边栏三横菜单 ===
+els.sidebarMenuBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  els.sidebarMenu.hidden = !els.sidebarMenu.hidden;
+});
+document.addEventListener("click", (e) => {
+  if (!els.sidebarMenu.hidden && !els.sidebarMenu.contains(e.target) && e.target !== els.sidebarMenuBtn) {
+    els.sidebarMenu.hidden = true;
+  }
+});
+els.sidebarMenu.addEventListener("click", (e) => {
+  const item = e.target.closest(".sidebar-menu-item");
+  if (!item) return;
+  els.sidebarMenu.hidden = true;
+  const action = item.dataset.menu;
+  switch (action) {
+    case "profile":
+      els.profileBtn.click();
+      break;
+    case "settings":
+      els.settingsBtn.click();
+      break;
+    case "update":
+      setStatus("当前已是最新版本 v1.0.0");
+      break;
+    case "logout":
+      if (window.confirm("确定要退出登录吗？")) {
+        localStorage.removeItem("ai_listen_login");
+        localStorage.removeItem("ai_listen_avatar");
+        location.reload();
+      }
+      break;
+  }
+});
+
+// === 侧边栏导航项 ===
+els.sidebarAvatar.addEventListener("click", () => {
+  els.profileBtn.click();
+});
+document.querySelector(".sidebar-nav").addEventListener("click", (e) => {
+  const navItem = e.target.closest(".sidebar-nav-item");
+  if (!navItem) return;
+  const nav = navItem.dataset.nav;
+  // Token 报表直接打开弹窗，不切换导航状态
+  if (nav === "token") {
+    els.tokenReportBtn.click();
+    return;
+  }
+  document.querySelectorAll(".sidebar-nav-item").forEach(el => el.classList.remove("active"));
+  navItem.classList.add("active");
+  const meetingArea = document.querySelector("#sidebarMeetingArea");
+  if (nav === "meeting") {
+    meetingArea.hidden = false;
+  } else {
+    meetingArea.hidden = true;
+    setStatus(`「${navItem.querySelector('.nav-text').textContent}」功能开发中...`);
+  }
+});
+
 els.exportButton.addEventListener("click", () => {
   els.exportMenu.hidden = !els.exportMenu.hidden;
 });
@@ -238,6 +364,10 @@ function checkLoginState() {
   if (saved) {
     els.loginOverlay.hidden = true;
     els.mainShell.hidden = false;
+    try {
+      const data = JSON.parse(saved);
+      updateSidebarUser(data.info || data);
+    } catch { /* ignore */ }
     return true;
   }
   return false;
@@ -314,6 +444,23 @@ function doLogin(method, info) {
   els.loginOverlay.hidden = true;
   els.mainShell.hidden = false;
   setStatus(`已登录（${method}）`);
+  updateSidebarUser(info);
+}
+
+function updateSidebarUser(info) {
+  if (info && info.user) {
+    els.sidebarUsername.textContent = info.user.username || info.user.email || "用户";
+    if (info.user.avatar) {
+      try {
+        const av = JSON.parse(info.user.avatar);
+        if (av.type === "system") {
+          els.sidebarAvatar.innerHTML = `<span style="font-size:18px">${av.emoji || "👤"}</span>`;
+        } else if (av.type === "custom" && av.dataUrl) {
+          els.sidebarAvatar.innerHTML = `<img src="${av.dataUrl}" alt="avatar" />`;
+        }
+      } catch { els.sidebarAvatar.textContent = "👤"; }
+    }
+  }
 }
 
 els.loginEmailBtn.addEventListener("click", async () => {
@@ -1554,7 +1701,7 @@ async function testAudioDevice() {
   setStatus("正在测试麦克风");
   try {
     const result = await invoke("test_input_device", {
-      deviceId: els.audioDevice.value || null
+      deviceId: els.audioDevice?.value || null
     });
     const maxDb = result.max_db == null ? "n/a" : `${result.max_db.toFixed(1)} dB`;
     setStatus(`${result.message}，峰值 ${maxDb}`);
@@ -1583,6 +1730,7 @@ async function selectSession(slug) {
     const session = await invoke("read_session", { slug });
     renderEditor(session);
     renderSessions();
+    showWorkView();
   } catch (error) {
     setStatus("加载会议失败：" + String(error));
   }
@@ -1666,7 +1814,7 @@ async function toggleAudio() {
       ? await invoke("stop_session_audio", { slug: activeSlug })
       : await invoke("start_session_audio", {
           slug: activeSlug,
-          deviceId: els.audioDevice.value || null
+          deviceId: els.audioDevice?.value || null
         });
 
     renderEditor(session);
@@ -1690,6 +1838,7 @@ async function transcribeLatestAudio() {
 }
 
 async function loadAudioDevices() {
+  if (!els.audioDevice) return;
   try {
     const devices = await invoke("list_input_devices");
     els.audioDevice.replaceChildren(
@@ -1708,6 +1857,107 @@ async function loadAudioDevices() {
     setStatus(String(error));
   }
 }
+
+// === 录音浮动面板逻辑 ===
+let recordingTimerInterval = null;
+let recordingSeconds = 0;
+let isRecordingActive = false;
+
+function startRecordingPanel() {
+  const panel = document.querySelector("#recordingPanel");
+  panel.hidden = false;
+  isRecordingActive = true;
+  recordingSeconds = 0;
+  updateRecordingTimer();
+  recordingTimerInterval = setInterval(() => {
+    recordingSeconds++;
+    updateRecordingTimer();
+  }, 1000);
+  // 侧边栏导航更新为“录音中”
+  const meetingNav = document.querySelector('[data-nav="meeting"]');
+  if (meetingNav) {
+    meetingNav.querySelector(".nav-icon").textContent = "🔴";
+    meetingNav.querySelector(".nav-text").textContent = "录音中";
+    meetingNav.classList.add("recording-active");
+  }
+  // 调用后端开始录音
+  if (activeSlug) {
+    invoke("start_session_audio", { slug: activeSlug, deviceId: null }).catch(() => {});
+  }
+  setStatus("录音中...");
+}
+
+function updateRecordingTimer() {
+  const m = String(Math.floor(recordingSeconds / 60)).padStart(2, "0");
+  const s = String(recordingSeconds % 60).padStart(2, "0");
+  document.querySelector("#recordingTimer").textContent = `${m}:${s}`;
+}
+
+function stopRecordingPanel() {
+  const panel = document.querySelector("#recordingPanel");
+  panel.hidden = true;
+  isRecordingActive = false;
+  clearInterval(recordingTimerInterval);
+  recordingTimerInterval = null;
+  recordingSeconds = 0;
+  document.querySelector("#recordingTimer").textContent = "00:00";
+  // 侧边栏导航恢复为“会议”
+  const meetingNav = document.querySelector('[data-nav="meeting"]');
+  if (meetingNav) {
+    meetingNav.querySelector(".nav-icon").textContent = "🎙";
+    meetingNav.querySelector(".nav-text").textContent = "会议";
+    meetingNav.classList.remove("recording-active");
+  }
+}
+
+// 录音面板按钮事件
+document.querySelector("#recordingCancelBtn").addEventListener("click", () => {
+  document.querySelector("#cancelRecordingOverlay").hidden = false;
+});
+
+document.querySelector("#recordingConfirmBtn").addEventListener("click", async () => {
+  // 完成录音：停止并保存
+  if (activeSlug) {
+    try {
+      await invoke("stop_session_audio", { slug: activeSlug });
+    } catch { /* ignore */ }
+  }
+  stopRecordingPanel();
+  setStatus("录音已保存");
+  if (activeSlug) {
+    const session = await invoke("read_session", { slug: activeSlug }).catch(() => null);
+    if (session) renderEditor(session);
+  }
+});
+
+document.querySelector("#recordingPlayBtn").addEventListener("click", () => {
+  // 暂停/继续计时
+  if (recordingTimerInterval) {
+    clearInterval(recordingTimerInterval);
+    recordingTimerInterval = null;
+    document.querySelector("#recordingPlayBtn").textContent = "▶";
+  } else {
+    recordingTimerInterval = setInterval(() => {
+      recordingSeconds++;
+      updateRecordingTimer();
+    }, 1000);
+    document.querySelector("#recordingPlayBtn").textContent = "⏸";
+  }
+});
+
+// 取消录音确认弹窗
+document.querySelector("#confirmCancelRecording").addEventListener("click", async () => {
+  document.querySelector("#cancelRecordingOverlay").hidden = true;
+  if (activeSlug) {
+    try { await invoke("stop_session_audio", { slug: activeSlug }); } catch { /* ignore */ }
+  }
+  stopRecordingPanel();
+  setStatus("录音已取消");
+});
+
+document.querySelector("#continueRecording").addEventListener("click", () => {
+  document.querySelector("#cancelRecordingOverlay").hidden = true;
+});
 
 async function summarize() {
   if (!activeSlug) { setStatus("请先新建或选择一个会议"); return; }

@@ -9,59 +9,152 @@
   <body>
     <main class="shell" id="mainShell" hidden>
       <aside class="sidebar">
-        <div class="brand">
-          <div>
-            <span class="label">AI Listen RS</span>
-            <h1>听记工作台</h1>
-          </div>
-          <button id="newSession" class="icon-button" title="新建会议">+</button>
-          <button id="manageSessionsBtn" class="icon-button" title="管理会议" style="font-size:14px;">🗃</button>
+        <!-- 左上角个人头像 -->
+        <div class="sidebar-top">
+          <div class="sidebar-avatar" id="sidebarAvatar" title="个人中心">👤</div>
+          <span class="sidebar-username" id="sidebarUsername">未登录</span>
         </div>
 
-        <label class="search">
-          <span>搜索</span>
-          <input id="searchInput" type="search" placeholder="会议、笔记关键词" />
-        </label>
+        <!-- 导航项 -->
+        <nav class="sidebar-nav">
+          <button class="sidebar-nav-item active" data-nav="meeting">
+            <span class="nav-icon">🎙</span>
+            <span class="nav-text">会议</span>
+          </button>
+          <button class="sidebar-nav-item" data-nav="notes">
+            <span class="nav-icon">📝</span>
+            <span class="nav-text">笔记</span>
+          </button>
+          <button class="sidebar-nav-item" data-nav="discover">
+            <span class="nav-icon">🔍</span>
+            <span class="nav-text">发现</span>
+          </button>
+          <button class="sidebar-nav-item" data-nav="browse">
+            <span class="nav-icon">🌐</span>
+            <span class="nav-text">浏览</span>
+          </button>
+          <button class="sidebar-nav-item" data-nav="token" id="navTokenReport">
+            <span class="nav-icon">📈</span>
+            <span class="nav-text">Token 报表</span>
+          </button>
+        </nav>
 
-        <label class="search">
-          <span>音频输入</span>
-          <select id="audioDevice"></select>
-        </label>
-        <button id="audioTestButton" class="sidebar-button">测试麦克风</button>
+        <!-- 会议列表区域 -->
+        <div class="sidebar-meeting-area" id="sidebarMeetingArea">
+          <div class="sidebar-meeting-header">
+            <button id="newSession" class="icon-button" title="新建会议">+</button>
+            <button id="manageSessionsBtn" class="icon-button" title="管理会议">🗃</button>
+          </div>
+          <label class="search">
+            <input id="searchInput" type="search" placeholder="搜索会议、笔记" />
+          </label>
+          <nav id="sessionList" class="session-list"></nav>
+        </div>
 
-        <nav id="sessionList" class="session-list"></nav>
+        <!-- 底部三横菜单 -->
+        <div class="sidebar-bottom">
+          <button id="sidebarMenuBtn" class="sidebar-menu-btn" title="菜单">☰</button>
+        </div>
+        <!-- 三横菜单弹出层 -->
+        <div id="sidebarMenu" class="sidebar-menu-popup" hidden>
+          <button class="sidebar-menu-item" data-menu="profile">👤 个人中心</button>
+          <button class="sidebar-menu-item" data-menu="settings">⚙️ 设置</button>
+          <button class="sidebar-menu-item" data-menu="update">🔄 检查更新</button>
+          <button class="sidebar-menu-item sidebar-menu-danger" data-menu="logout">🚪 退出登录</button>
+        </div>
       </aside>
 
       <section class="workspace">
-        <header class="toolbar">
-          <div>
-            <p id="sessionPath" class="path">未选择会议</p>
-            <h2 id="sessionTitle">选择或新建一个会议</h2>
-          </div>
-          <div class="actions">
-            <button id="screenshotButton" title="截图">📷 截图</button>
-            <button id="analyzeButton" title="识别截图内容">🔍 识别</button>
-            <button id="recordButton" title="开始录屏">🎬 录屏</button>
-            <button id="audioButton" title="开始录音">🎙 录音</button>
-            <button id="transcribeButton" title="转写最新录音">📝 转写</button>
-            <button id="summaryButton" title="生成摘要">📊 摘要</button>
-            <button id="indexButton" title="刷新索引">🔎 索引</button>
-            <div class="export-group">
-              <button id="exportButton" title="导出笔记">📤 导出</button>
-              <div class="export-menu" hidden>
-                <button data-format="markdown">Markdown</button>
-                <button data-format="pdf">PDF</button>
-                <button data-format="xmind">XMind</button>
+        <!-- AI 聊天欢迎界面（初始状态） -->
+        <div id="chatHome" class="chat-home">
+          <div class="chat-input-card">
+            <div class="chat-brand">
+              <span class="chat-brand-tag">AI Listen RS</span>
+              <h1 class="chat-brand-title">AI 听记助手</h1>
+            </div>
+            <textarea id="chatInput" class="chat-input" placeholder="有问题尽管问我" rows="2"></textarea>
+            <div class="chat-input-footer">
+              <div class="chat-input-left">
+                <button id="chatModeBtn" class="chat-mode-btn">🌐 快速 <span class="mode-arrow">▾</span></button>
+                <button class="chat-at-btn" title="提及">@</button>
+              </div>
+              <div class="chat-input-right">
+                <button class="chat-tool-btn" title="附件">📎</button>
+                <button class="chat-tool-btn" title="剪切">✂️</button>
+                <button id="chatSendBtn" class="chat-send-btn" title="发送">➤</button>
               </div>
             </div>
-            <button id="saveButton" class="primary">💾 保存</button>
-            <button id="settingsBtn" title="设置">⚙️</button>
-            <button id="tokenReportBtn" title="Token 报表">📈</button>
-            <button id="profileBtn" title="个人中心">👤</button>
           </div>
-        </header>
+          <div class="chat-quick-actions">
+            <button class="chat-action-btn" data-action="audio"><span class="chat-action-icon">🎙</span><span>录音纪要</span></button>
+            <button class="chat-action-btn" data-action="recognize"><span class="chat-action-icon">📄</span><span>文档解读</span></button>
+            <button class="chat-action-btn" data-action="summary"><span class="chat-action-icon">✨</span><span>智能写作</span></button>
+            <button class="chat-action-btn" data-action="screenshot"><span class="chat-action-icon">🖼️</span><span>图像生成</span></button>
+          </div>
+        </div>
 
-        <div class="editor-grid">
+        <!-- 录音浮动面板（ima风格） -->
+        <div id="recordingPanel" class="recording-panel" hidden>
+          <div class="recording-panel-header">
+            <span class="recording-panel-title">🎙 录音纪要</span>
+          </div>
+          <div class="recording-panel-body">
+            <div class="recording-timer" id="recordingTimer">00:00</div>
+            <div class="recording-controls">
+              <button id="recordingCancelBtn" class="rec-ctrl-btn" title="取消录音">✖</button>
+              <button id="recordingPlayBtn" class="rec-ctrl-btn rec-ctrl-main" title="开始/暂停">▶</button>
+              <button id="recordingConfirmBtn" class="rec-ctrl-btn" title="完成录音">✔</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 取消录音确认弹窗 -->
+        <div id="cancelRecordingOverlay" class="settings-overlay" hidden>
+          <div class="cancel-recording-card">
+            <div class="cancel-recording-icon">🎙</div>
+            <h3>取消录音</h3>
+            <p class="cancel-recording-desc">取消本次录音，并删除已录内容</p>
+            <div class="cancel-recording-actions">
+              <button id="confirmCancelRecording" class="btn-cancel-recording">取消录音</button>
+              <button id="continueRecording" class="btn-continue-recording">继续录音</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 工作区视图（选择会议后显示） -->
+        <div id="workView" class="work-view" hidden>
+          <header class="toolbar">
+            <div class="toolbar-title-row">
+              <button id="backToHomeBtn" class="back-home-btn" title="返回首页">←</button>
+              <div>
+                <p id="sessionPath" class="path">未选择会议</p>
+                <h2 id="sessionTitle">选择或新建一个会议</h2>
+              </div>
+            </div>
+            <div class="actions">
+              <button id="screenshotButton" title="截图">📷 截图</button>
+              <button id="analyzeButton" title="识别截图内容">🔍 识别</button>
+              <button id="recordButton" title="开始录屏">🎬 录屏</button>
+              <button id="audioButton" title="开始录音">🎙 录音</button>
+              <button id="transcribeButton" title="转写最新录音">📝 转写</button>
+              <button id="summaryButton" title="生成摘要">📊 摘要</button>
+              <button id="indexButton" title="刷新索引">🔎 索引</button>
+              <div class="export-group">
+                <button id="exportButton" title="导出笔记">📤 导出</button>
+                <div class="export-menu" hidden>
+                  <button data-format="markdown">Markdown</button>
+                  <button data-format="pdf">PDF</button>
+                  <button data-format="xmind">XMind</button>
+                </div>
+              </div>
+              <button id="saveButton" class="primary">💾 保存</button>
+              <button id="settingsBtn" title="设置">⚙️</button>
+              <button id="tokenReportBtn" title="Token 报表">📈</button>
+              <button id="profileBtn" title="个人中心">👤</button>
+            </div>
+          </header>
+
+          <div class="editor-grid">
           <section class="editor-panel">
             <textarea id="noteEditor" spellcheck="false" placeholder="# 会议标题&#10;&#10;- 输入会议笔记"></textarea>
           </section>
@@ -143,6 +236,7 @@
             </section>
           </aside>
         </div>
+        </div><!-- /workView -->
       </section>
     </main>
 
@@ -321,26 +415,80 @@
 
     <!-- 设置面板 -->
     <div id="settingsOverlay" class="settings-overlay" hidden>
-      <div class="settings-card">
+      <div class="settings-card settings-modern">
         <div class="settings-header">
-          <h2>⚙️ 设置</h2>
+          <h2>设置</h2>
           <button id="settingsClose" class="settings-close-btn">&times;</button>
         </div>
-        <div class="settings-body">
-          <div class="settings-group">
-            <label class="settings-label">OpenAI API Key</label>
-            <input id="settingsApiKey" type="password" placeholder="sk-..." class="settings-input" />
+        <div class="settings-body settings-body-modern">
+          <!-- 通用设置 -->
+          <div class="settings-section">
+            <h3 class="settings-section-title">通用设置</h3>
+            <div class="settings-row">
+              <span class="settings-row-label">界面显示</span>
+              <select id="settingsTheme" class="settings-select">
+                <option value="system">跟随系统</option>
+                <option value="light">浅色</option>
+                <option value="dark">深色</option>
+              </select>
+            </div>
+            <div class="settings-row">
+              <span class="settings-row-label">字体大小</span>
+              <div class="settings-slider-group">
+                <span class="slider-label">小</span>
+                <input id="settingsFontSize" type="range" min="12" max="18" value="14" class="settings-slider" />
+                <span class="slider-label">大</span>
+              </div>
+            </div>
+            <div class="settings-row">
+              <span class="settings-row-label">开机自动启动</span>
+              <label class="settings-toggle"><input id="settingsAutoStart" type="checkbox" /><span class="toggle-track"></span></label>
+            </div>
+            <div class="settings-row">
+              <span class="settings-row-label">允许消息通知</span>
+              <label class="settings-toggle"><input id="settingsNotify" type="checkbox" checked /><span class="toggle-track"></span></label>
+            </div>
+            <div class="settings-row settings-row-link">
+              <span class="settings-row-label">模型设置</span>
+              <span class="settings-row-arrow">支持自定义模型 &gt;</span>
+            </div>
           </div>
-          <div class="settings-group">
-            <label class="settings-label">上下文窗口大小 (tokens)</label>
-            <input id="settingsContextWindow" type="number" min="256" max="128000" class="settings-input" />
+
+          <!-- AI 工具 -->
+          <div class="settings-section">
+            <h3 class="settings-section-title">AI 工具</h3>
+            <div class="settings-row">
+              <span class="settings-row-label">OpenAI API Key</span>
+              <input id="settingsApiKey" type="password" placeholder="sk-..." class="settings-input-inline" />
+            </div>
+            <div class="settings-row">
+              <span class="settings-row-label">上下文窗口大小</span>
+              <input id="settingsContextWindow" type="number" min="256" max="128000" class="settings-input-inline" />
+            </div>
+            <div class="settings-row">
+              <span class="settings-row-label">Token 用量限制</span>
+              <input id="settingsTokenLimit" type="number" min="1000" class="settings-input-inline" />
+            </div>
+            <div class="settings-row">
+              <span class="settings-row-label">快捷截图</span>
+              <select id="settingsShortcut" class="settings-select">
+                <option value="shift+alt+j">Shift + Alt + J</option>
+                <option value="ctrl+shift+s">Ctrl + Shift + S</option>
+                <option value="none">禁用</option>
+              </select>
+            </div>
           </div>
-          <div class="settings-group">
-            <label class="settings-label">Token 用量限制</label>
-            <input id="settingsTokenLimit" type="number" min="1000" class="settings-input" />
-            <span class="settings-hint">达到限制后将停止 AI 调用</span>
+
+          <!-- 关于 -->
+          <div class="settings-section">
+            <h3 class="settings-section-title">关于</h3>
+            <div class="settings-row settings-row-link">
+              <span class="settings-row-label">关于 AI Listen RS</span>
+              <span class="settings-row-arrow">v1.0.0 &gt;</span>
+            </div>
           </div>
-          <button id="settingsSaveBtn" class="login-submit">保存设置</button>
+
+          <button id="settingsSaveBtn" class="settings-save-modern">保存设置</button>
         </div>
       </div>
     </div>
